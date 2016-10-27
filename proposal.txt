@@ -1,0 +1,47 @@
+COMP112 Final Project - Snakes and Routers
+    A distributed game of Snake
+    by: Peter Lee and Charles Wan
+    on: 10/26/16
+
+An Introduction:
+    Snake is a classic single player game in which the player controls a snake
+    that traverses a 2D space, eating fruits and growing in length. The object
+    of the game is eat as many fruits without crashing into its growing body, at
+    which point the game ends. Snake has been incredibly successful throughout
+    its history, and was the most ubiquitous mobile game in the early 2000s.
+    Unfortunately, with the rise of more powerful computers and phones, Snake
+    has been overtaken by more modern games. Our project seeks to revitalize
+    the classic game by adding a distributed component, allowing multiple users
+    to play at once from different devices.
+        While we considered a high level game-making service that already offers
+    networking support such as PlayCanvas (a web service for making online
+    games), we ultimately decided to go a lower-level, peer-to-peer
+    implementation. The ultimate result would be a portable executable, which
+    would connect to other peers on a local network. Ideally, we would like to
+    implement support for games over the Internet, though this would require
+    an external server, which could be hosted on a service like Heroku.
+
+Milestones:
+    1. Design architecture (Both)
+    2. Implement single-player snake (Peter)
+        a. Display game space
+        b. Modules for characters (snakes and fruit)
+        c. Respond to input
+        d. In-place display update
+        e. Score keeping
+        f. Game start and end
+        g. (Optional) high score system
+    3. Implement peer-to-peer support (Charles)
+        a. Create and maintain a game lobby
+        b. Ability to search for game lobbies
+        c. Ability to add to or remove from lobbies
+        d. Communicate game states
+    4. Implement multiplayer snake (build on top of game engine and network
+       module) (Both)
+       a. Synchronized display update based on peer state changes (Charles)
+       b. Introduce multiple snakes (Peter)
+       c. Alter screen size and fruits based on number of peers (Peter)
+       d. Unified game start and end (Charles)
+    5. (Optional)Implement external server for Internet games (Undecided)
+        a. Add capability to use peer-to-peer or client-server to game
+        b. Create server, host on Heroku or other 3rd party service
