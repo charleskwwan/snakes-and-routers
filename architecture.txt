@@ -1,0 +1,112 @@
+COMP112 Final Project - Snakes and Routers
+    A distributed game of Snake
+    by: Peter Lee and Charles Wan
+    on: 10/29/16
+
+Tools/Libraries:
+    - Pygame: Python module for writing games. Includes graphics and sound libs.
+        - Use to create basic snake game
+    - socket: Basic Python module for low-level networking, C-like structure,
+              but with many details already handled
+    - EmuLab: Network testing - simulate network deficiencies (i.e. latency,
+              packet loss, etc.)
+        - https://www.emulab.net/joinproject.php3
+    - Flask: Python microframework for handling server requests via URLs
+        - Use to build central server
+
+Classes:
+    - Game: All have __init__ and blit (rendering)
+        - GameWindow
+            - run: Main loop for running game
+            - runMenu: renders a menu, and listens for user input (loop)
+                - Can 'create game' and 'join game'
+            - runGame: renders and runs the main snake game, based on user input
+                       and network updates
+                - Includes multisnake, fruits, and collision handling
+            - drawGrid: renders a grid on the screen
+        - Snake
+            - Vars: pos=(x, y), length, body[], speed, is_dead, score,
+                    dir=(h, v), hd_color, bd_color
+            - updatePosition: updates pos based on dir and speed
+            - increaseLength: increases length and adds to body, called when
+                              snake eats the food
+            - checkDead: checks if a snake has collided with a snake (incl self)
+            - update: wraps above 3 functions together
+            - getScore: returns the score of a snake
+            - toJSON: returns snake as json data
+        - SnakePart
+            - Vars: pos=(x, y), color
+        - ScoreBoard (stretch goal)
+            - Vars: scores{}
+            - updateScores: updates scores of all snakes, and sorts
+        - FoodHandler
+            - Vars: foods[], max_foods
+            - createFood: generates a food at a random position up to max_foods
+            - eatFood: checks all snakes for collision with food, and tells
+                       snakes to update their scores and lengths when true
+            - update: wraps the above 2 functons together
+        - Food
+            - Vars: pos=(x, y), color
+        - Button
+            - Vars: pos=(x, y), dim=(w, h), text, callback
+            - buttonClicked: checks if the button has been clicked, and runs the
+                             callback if true
+    - Networking:
+        - GameState
+            - Vars: dictionary of snakes{{ip, port}: snake} and foods[], dim=(w, h)
+        - Player
+            - Vars: gameState, ipaddr, port
+            - Subclasses: 
+                - Host
+                    - Vars:
+                    - addToMaster: signals to master server that host is hosting
+                                   new game.
+                    - sendGameState: sends gameState to a client
+                    - sendNewClient: sends a new id and snake to a client
+                    - sendUpdateDir: sends a client's id and new direction to 
+                                     a client
+                    - checkClientStatus: pings a client to check if still active
+                    - sendClientQuit: sends a message that a client has quit
+                    - hostQuit: host sends message that he is quitting, 
+                                (host transfer)
+                    - addFood: adds a food to the foods in gameState
+                - Client
+                    - Vars: hostaddr
+                    Vars:
+                    - joinGame: joins a game at a host ip address
+                    - sendNewDir: sends new direction of snake to host
+                    - updateGameState: updates game state with new snake/dir/etc
+                    - addNewSnake: adds a snake to the gamestate
+                    - sendQuit: sends quit message to host
+
+Architecture:
+    - Flow:
+        - Initial screen: Menu
+            - Create Game: New game initialized with current user as host and
+                           only player. IP address is sent to server to signify
+                           an open, joinable game.
+            - Join Game: User pings server for a random open game, then joins
+                         it by establishing a connection with the game's host.
+        - In-game, rules:
+            - User dropped in as new Snake with a default initial length
+            - User's snake is initially uncollidable for a certain period of
+              time to allow footing
+            - Can quit anytime by clicking exit button
+            - Scoreboard tracks score of all players
+            - Players respawn after a set amount of time, with score reset
+            - When host quits, host info is transferred to a new randomly
+              selected player, if available; otherwise close game
+    - Game classes:
+        - GameWindow: Overall loop
+            - Snake
+                - SnakePart
+            - FoodHandler
+                - Food
+                - Snake (on collisions)
+            - Button (multiple, on menu and in game)
+            - ScoreBoard
+                - Snake (for scores)
+
+Notes:
+    - Limit framerate to reduce performance requirements
+    
