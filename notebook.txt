@@ -13,3 +13,7 @@ Entry 1: 11/2/16
     - What we did:
         - Start new branch 'checkpoint1'
         - Decide goals
+    - Things to think about:
+        - Need some sort of synchronization variable, especially with regards to
+          latency
+          
