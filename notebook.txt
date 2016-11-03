@@ -1,0 +1,15 @@
+COMP112 Final Project - Snakes and Routers
+    A distributed game of Snake
+    by: Peter Lee and Charles Wan
+    on: 11/2/16
+
+Entry 1: 11/2/16
+    - Core goals:
+        - Base game with non-transferrable multiplayer
+        - No error handling
+
+    - Stretch goals:
+        - Transferrable multiplayer
+    - What we did:
+        - Start new branch 'checkpoint1'
+        - Decide goals
