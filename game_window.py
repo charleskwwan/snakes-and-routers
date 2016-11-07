@@ -1,35 +1,50 @@
-#!/etc/python
-
 import pygame
 from Food import *
 from FoodHandler import *
+from snake import *
+from constants import *
 
 # Lowest possible user event ID (generally 24)
 USEREVENT = pygame.USEREVENT
 CREATE_FOOD = USEREVENT + 1
+MOVE_SNAKE = USEREVENT + 2
 
 class GameWindow(object):
     def __init__(self):
         pygame.init()         
 
         self.time = pygame.time.Clock()
-        self.fps = 1
-        self.size = self.width, self.height = 500, 500
+        self.fps = FPS
+        self.size = self.width, self.height = SCR_WIDTH, SCR_HEIGHT
         self.screen = pygame.display.set_mode(self.size)
 
     def runGame(self):
+        #init foodhandler and its timer
         foodHandler = FoodHandler()
-        pygame.time.set_timer(CREATE_FOOD, 5000) 
+        pygame.time.set_timer(CREATE_FOOD, FOOD_TIMER)
+
+        # init player's snake and move-snake timer
+        snake = Snake((10, 10), SNAKE_LENGTH, SNAKE_HD_COLOR, SNAKE_BD_COLOR, (0, +1))
+        pygame.time.set_timer(MOVE_SNAKE, SNAKE_TIMER)
+
         while True:
             self.time.tick(self.fps)
-            self.screen.fill((255, 255, 255))
-            for event in pygame.event.get():
+            self.screen.fill(SCR_BG_COLOR)
+ 
+            for event in pygame.event.get([pygame.QUIT, CREATE_FOOD, MOVE_SNAKE]):
                 if event.type == pygame.QUIT:
                     exit()
-                if event.type == CREATE_FOOD:
+                elif event.type == CREATE_FOOD:
                     foodHandler.update([], self.screen) 
+                elif event.type == MOVE_SNAKE:
+                    snake.update(self.screen)
+
+            # blit in case not updated in event for loop
             foodHandler.blit(self.screen)
+            snake.blit(self.screen)
+
             pygame.display.update()
+
     def runMenu(self):
         while True:
             self.time.tick(self.fps)
@@ -41,6 +56,7 @@ class GameWindow(object):
                                     (0, 0, 0))
             self.screen.blit(text, (250, 250))
             pygame.display.update()
+             
     def run(self):
         inGame = True
         inMenu = True

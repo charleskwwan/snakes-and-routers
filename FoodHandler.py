@@ -1,6 +1,7 @@
 import pygame
 import random
 from food import *
+from constants import *
 
 class FoodHandler(object):
     def __init__(self, maxfoods = 10):
@@ -14,8 +15,8 @@ class FoodHandler(object):
         isValidLoc = False
         while not isValidLoc:
             # Picking random coordinates 
-            food_x = random.randint(0, 500 / 10)
-            food_y = random.randint(0, 500 / 10)
+            food_x = random.randint(0, SCR_WIDTH / CELL_LEN)
+            food_y = random.randint(0, SCR_HEIGHT / CELL_LEN)
 
             # Making sure there are no collisions with ingame objs
             for snake in snakes:
