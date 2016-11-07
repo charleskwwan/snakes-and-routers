@@ -1,28 +1,24 @@
 import pygame
 from snake import *
-
-# Lowest possible user event ID (generally 24)
-USEREVENT = pygame.USEREVENT
-CREATE_FOOD = USEREVENT + 1
-MOVE_SNAKE = USEREVENT + 2
+from constants import *
 
 class GameWindow(object):
     def __init__(self):
         pygame.init()         
 
         self.time = pygame.time.Clock()
-        self.fps = 60
-        self.size = self.width, self.height = 500, 500
+        self.fps = FPS
+        self.size = self.width, self.height = SCR_WIDTH, SCR_HEIGHT
         self.screen = pygame.display.set_mode(self.size)
 
     def runGame(self):
         # init player's snake and move-snake timer
-        snake = Snake((10, 10), 5, (0, 0, 255), (0, 255, 0), (0, +1))
-        pygame.time.set_timer(MOVE_SNAKE, 200)
+        snake = Snake((10, 10), SNAKE_LENGTH, SNAKE_HD_COLOR, SNAKE_BD_COLOR, (0, +1))
+        pygame.time.set_timer(MOVE_SNAKE, SNAKE_TIMER)
 
         while True:
             self.time.tick(self.fps)
-            self.screen.fill((255, 255, 255))
+            self.screen.fill(SCR_BG_COLOR)
             snake.blit(self.screen)
             for event in pygame.event.get([pygame.QUIT, MOVE_SNAKE]):
                 if event.type == pygame.QUIT:

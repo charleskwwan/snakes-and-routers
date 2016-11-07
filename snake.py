@@ -4,8 +4,7 @@
 #	on: 11/2/16
 
 import pygame
-
-CELL_LEN = 10
+from constants import *
 
 # SnakePart: represents one secton of the snake (many sections)
 class SnakePart(object):
@@ -45,7 +44,7 @@ class Snake(object):
 		# create snake body
 		nxt_col = self.head.col - self.dir_col
 		nxt_row = self.head.row - self.dir_row
-		for i in range(0, self.length):
+		for i in range(0, self.length - 1):
 			self.tail.append(SnakePart((nxt_col, nxt_row), bd_color))
 			nxt_col -= self.dir_col
 			nxt_row -= self.dir_row
@@ -78,8 +77,8 @@ class Snake(object):
 					self.dir_row = 0
 		# extend/move snake based on direction
 		self.tail.insert(0, SnakePart((self.col, self.row), self.bd_color))
-		self.col += self.dir_col
-		self.row += self.dir_row
+		self.col = (self.col + self.dir_col) % (SCR_WIDTH / CELL_LEN)
+		self.row = (self.row + self.dir_row) % (SCR_HEIGHT / CELL_LEN)
 		self.x = self.col * CELL_LEN
 		self.y = self.row * CELL_LEN
 		self.head = SnakePart((self.col, self.row), self.hd_color) # head
