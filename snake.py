@@ -53,12 +53,13 @@ class Snake(object):
 		self.is_dead = False
 		self.vulnerable_in = 10 # at 0, snake becomes vulnerable
 
+	# draw snake on screen
 	def blit(self, screen):
 		for part in self.tail:
 			part.blit(screen)
 		self.head.blit(screen)
 
-	# todo: implement window wrapping on snake movement
+	# move snake, potentially with change in direction
 	def move(self):
 		# change direction if necessary
 		for event in pygame.event.get():
@@ -82,8 +83,30 @@ class Snake(object):
 		self.x = self.col * CELL_LEN
 		self.y = self.row * CELL_LEN
 		self.head = SnakePart((self.col, self.row), self.hd_color) # head
-		if len(self.tail) > self.length:
+		if len(self.tail) > self.length - 1:
 			self.tail.pop(len(self.tail) - 1) # remove last part in tail
+
+	# checks if self includes the given cell
+	def collidesWith(self, cell):
+		for part in [self.head] + self.tail:
+			if cell[0] == part.col and cell[1] == part.row:
+				return True
+		return False
+
+	# checks if this snake has collided with another or itself
+	def collideSnake(self, snakes):
+		for part in self.tail:
+			if self.col == part.col and self.row == part.row:
+				return True
+		for snake in snakes:
+			if self == snake:
+				continue
+			elif snake.collidesWith((self.col, self.row)):
+				return True
+		return False
+
+	def increaseLength(self):
+		self.length += 1
 
 	def update(self, screen):
 		self.move()

@@ -20,11 +20,8 @@ class FoodHandler(object):
 
             # Making sure there are no collisions with ingame objs
             for snake in snakes:
-                """
-                if collision:
-                    pick again!11!!!!1
-
-                """
+                if snake.collidesWith((food_x, food_y)):
+                    continue
             for food in self.foods:
                 if food.grid_x == food_x or food.grid_y == food_y:
                     continue
@@ -36,30 +33,19 @@ class FoodHandler(object):
     def deleteFood(self, food):
         self.foods.remove(food)
          
-    def eatFood(self, snakes): 
-        #If collision with food, remove food, snakes grows
-        """
+    def eatFood(self, snakes):
         for snake in snakes:
             for food in self.foods:
-                if collision:
-                    deleteFood(food)
+                if snake.collidesWith((food.grid_x, food.grid_y)):
+                    self.deleteFood(food)
                     snake.increaseLength()
-        """
 
     def blit(self, screen):
         for food in self.foods:
             food.blit(screen)
+
     def update(self, snakes, screen):
-        """
-        print self.foodTime
-        time = pygame.time.get_ticks()
-        print time
-        if time - self.foodTime > 5000:     
-            self.createFood(snakes, screen)
-            self.foodTime = time
-        """
         self.createFood(snakes, screen)
-        self.eatFood(snakes)
         self.blit(screen)
  
      

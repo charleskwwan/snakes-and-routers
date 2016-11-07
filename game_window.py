@@ -24,8 +24,9 @@ class GameWindow(object):
         pygame.time.set_timer(CREATE_FOOD, FOOD_TIMER)
 
         # init player's snake and move-snake timer
-        snake = Snake((10, 10), SNAKE_LENGTH, SNAKE_HD_COLOR, SNAKE_BD_COLOR, (0, +1))
+        s = Snake((10, 10), SNAKE_LENGTH, SNAKE_HD_COLOR, SNAKE_BD_COLOR, (0, +1))
         pygame.time.set_timer(MOVE_SNAKE, SNAKE_TIMER)
+        snakes = [s]
 
         while True:
             self.time.tick(self.fps)
@@ -35,13 +36,19 @@ class GameWindow(object):
                 if event.type == pygame.QUIT:
                     exit()
                 elif event.type == CREATE_FOOD:
-                    foodHandler.update([], self.screen) 
+                    foodHandler.update(snakes, self.screen) 
                 elif event.type == MOVE_SNAKE:
-                    snake.update(self.screen)
+                    for snake in snakes:
+                        snake.update(self.screen)
+                    for snake in snakes: # temp, check if snakes collide
+                        if snake.collideSnake(snakes):
+                            snakes.remove(snake)
+                    foodHandler.eatFood(snakes)
 
             # blit in case not updated in event for loop
             foodHandler.blit(self.screen)
-            snake.blit(self.screen)
+            for snake in snakes:
+                snake.blit(self.screen)
 
             pygame.display.update()
 

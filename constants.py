@@ -15,3 +15,4 @@ SNAKE_LENGTH = 10
 
 # food details
 FOOD_TIMER = 5000
+	
