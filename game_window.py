@@ -1,13 +1,17 @@
 #!/etc/python
 
 import pygame
-from food import *
-from FoodHandler import * 
+from Food import *
+from FoodHandler import *
 
+# Lowest possible user event ID (generally 24)
+USEREVENT = pygame.USEREVENT
+CREATE_FOOD = USEREVENT + 1
 
 class GameWindow(object):
     def __init__(self):
-        pygame.init()
+        pygame.init()         
+
         self.time = pygame.time.Clock()
         self.fps = 1
         self.size = self.width, self.height = 500, 500
@@ -15,13 +19,16 @@ class GameWindow(object):
 
     def runGame(self):
         foodHandler = FoodHandler()
+        pygame.time.set_timer(CREATE_FOOD, 5000) 
         while True:
             self.time.tick(self.fps)
+            self.screen.fill((255, 255, 255))
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     exit()
-            self.screen.fill((255, 255, 255))
-            foodHandler.update([], self.screen)
+                if event.type == CREATE_FOOD:
+                    foodHandler.update([], self.screen) 
+            foodHandler.blit(self.screen)
             pygame.display.update()
     def runMenu(self):
         while True:
@@ -34,12 +41,8 @@ class GameWindow(object):
                                     (0, 0, 0))
             self.screen.blit(text, (250, 250))
             pygame.display.update()
-             
-        
-
-
     def run(self):
-        inGame = False
+        inGame = True
         inMenu = True
         while True:
             for event in pygame.event.get():
@@ -50,14 +53,9 @@ class GameWindow(object):
             elif inMenu:
                 self.runMenu()
 
-
-
-
 def main():
     app = GameWindow()
     app.run()
-
-
 
 if __name__ == '__main__':
     main()

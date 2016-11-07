@@ -49,12 +49,15 @@ class FoodHandler(object):
         for food in self.foods:
             food.blit(screen)
     def update(self, snakes, screen):
+        """
         print self.foodTime
         time = pygame.time.get_ticks()
         print time
         if time - self.foodTime > 5000:     
             self.createFood(snakes, screen)
             self.foodTime = time
+        """
+        self.createFood(snakes, screen)
         self.eatFood(snakes)
         self.blit(screen)
  
