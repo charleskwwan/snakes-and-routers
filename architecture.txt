@@ -60,9 +60,9 @@ Classes:
                        functions below):
                 - sendMessage((ip, port), actiontype, msg)
                 - Network_input
-                - Network_newPlayer
+                - Network_newSnake
                 - Network_gameState
-                - Network_removePlayer
+                - Network_removeSnake
             - Subclasses: 
                 - Host
                     - Vars:
