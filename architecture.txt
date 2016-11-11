@@ -56,6 +56,13 @@ Classes:
             - Vars: dictionary of snakes{{ip, port}: snake} and foods[], dim=(w, h)
         - Player
             - Vars: gameState, ipaddr, port
+            - Methods (subclasses can, and sometimes should override network
+                       functions below):
+                - sendMessage((ip, port), actiontype, msg)
+                - Network_input
+                - Network_newPlayer
+                - Network_gameState
+                - Network_removePlayer
             - Subclasses: 
                 - Host
                     - Vars:
