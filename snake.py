@@ -50,6 +50,7 @@ class Snake(object):
 			nxt_row -= self.dir_row
 
 		# overall details
+		self.score = 0
 		self.is_dead = False
 		self.vulnerable_in = 10 # at 0, snake becomes vulnerable
 
@@ -76,6 +77,9 @@ class Snake(object):
 				elif event.key == pygame.K_RIGHT and self.dir_col != -1:
 					self.dir_col = +1
 					self.dir_row = 0
+				else:
+					continue
+				break
 		# extend/move snake based on direction
 		self.tail.insert(0, SnakePart((self.col, self.row), self.bd_color))
 		self.col = (self.col + self.dir_col) % (SCR_WIDTH / CELL_LEN)
@@ -106,6 +110,7 @@ class Snake(object):
 		return False
 
 	def increaseLength(self):
+		self.score += 1
 		self.length += 1
 
 	def update(self, screen):
