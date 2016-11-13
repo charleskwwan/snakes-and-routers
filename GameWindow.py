@@ -1,7 +1,7 @@
 import pygame
 from Food import *
 from FoodHandler import *
-from snake import *
+from Snake import *
 from constants import *
 
 # Lowest possible user event ID (generally 24)

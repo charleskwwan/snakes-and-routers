@@ -22,7 +22,8 @@ class SnakePart(object):
 
 # Snake represents the entire snake
 class Snake(object):
-	def __init__(self, cell, length, hd_color, bd_color, direction):
+	def __init__(self, cell=(0, 0), length=10, hd_color=(0, 150, 0), \
+		bd_color=(0, 255, 0), direction=(+1, 0)):
 		# positioning
 		self.col = cell[0]
 		self.row = cell[1]
