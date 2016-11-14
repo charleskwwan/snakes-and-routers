@@ -10,13 +10,19 @@ class ClientChannel(Channel):
 		self.addr = addr
 
 	def Network_joinGame(self, data):
-		# todo: create new player in host
 		join_msg = self.host.createMessage(Player.JOIN_GAME, self.addr)
 		self.Send(join_msg)
+
+		# add new player to game state
+		cell, direction = host.game_state.getEmptyInitialPosition()
+		host.game_state.addSnake(self.addr, cell, direction)
 		state_msg = self.host.createMessage(Player.GAME_STATE,
 			jsonpickle.encode(host.game_state))
-		# print state_msg
 		self.Send(state_msg)
+
+	def sendNewSnake(self, addr):
+		snake_msg = self.host.createMessage(Player.NEW_SNAKE, addr)
+		self.Send(snake_msg)
 
 class Host(Player, Server):
 	def __init__(self, ip, port):

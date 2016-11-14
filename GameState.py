@@ -83,7 +83,6 @@ class GameState(FoodHandler):
         # check eat food
         super(GameState, self).eatFood(snakes)
 
-
     def updateFood(self, screen):
         snakes = [self.id_snakes[k] for k in self.id_snakes]
         super(GameState, self).update(snakes, screen) # call foodhandler's
