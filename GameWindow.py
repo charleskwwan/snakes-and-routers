@@ -80,12 +80,14 @@ class GameWindow(object):
             self.time.tick(self.fps)
             self.screen.fill(SCR_BG_COLOR)
             self.player.update()
+
             for event in pygame.event.get([pygame.KEYDOWN]):
                 if event.key != pygame.K_UP and event.key != pygame.K_DOWN and \
                    event.key != pygame.K_LEFT and event.key != pygame.K_RIGHT:
                     continue
                 elif type(self.player) == Client:
                     self.player.sendInput(event.key)
+                    
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     exit()

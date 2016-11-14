@@ -1,6 +1,6 @@
 from Player import Player
 from PodSixNet.Connection import ConnectionListener, connection
-import jsonpickle
+from GameState import GameState
 
 class Client(Player, ConnectionListener):
 	def __init__(self):
@@ -20,14 +20,13 @@ class Client(Player, ConnectionListener):
 
 	def Network_gameState(self, message):
 		encoded_state = message[Player.DATA_TAG]
-		self.game_state = jsonpickle.decode(encoded_state)
+		self.game_state = GameState(json=encoded_state)
 
 	def sendInput(self, key_pressed):
 		message = self.createMessage(Player.INPUT, key_pressed)
 		self.Send(message)
 
 	def Network_input(self, message):
-                print "got some input"
 		data = message[Player.DATA_TAG]
 		self.game_state.addKeyPressed(data["addr"], data["key_pressed"])
 

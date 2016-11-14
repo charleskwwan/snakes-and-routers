@@ -1,7 +1,6 @@
 from Player import Player
 from PodSixNet.Channel import Channel
 from PodSixNet.Server import Server
-import jsonpickle
 
 # class for open channel with a client
 class ClientChannel(Channel):
@@ -18,12 +17,12 @@ class ClientChannel(Channel):
 		cell, direction = self.host.game_state.getEmptyInitialPosition()
 		self.host.game_state.addSnake(self.addr, cell, direction)
 		state_msg = self.host.createMessage(Player.GAME_STATE,
-			jsonpickle.encode(self.host.game_state))
+			self.host.game_state.stringify())
 		self.Send(state_msg)
 
-		def Network_input(self, message):
-				
-				self.host.sendKeypress(self.addr, message[Player.DATA_TAG])
+	def Network_input(self, message):
+		# key pressed is at data tag
+		self.host.sendKeypress(self.addr, message[Player.DATA_TAG])
 
 	def sendNewSnake(self, addr):
 		snake_msg = self.host.createMessage(Player.NEW_SNAKE, addr)
@@ -43,7 +42,6 @@ class Host(Player, Server):
 		# create snake for host
 		cell, direction = self.game_state.getEmptyInitialPosition()
 		self.game_state.addSnake((ip, port), cell, direction)
-		# print jsonpickle.encode(self.game_state)
 
 	def Connected(self, channel, addr):
 		print addr
