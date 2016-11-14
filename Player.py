@@ -24,3 +24,15 @@ class Player(object):
 			return message
 		else:
 			raise LookupError("Invalid message type")
+
+	def getKey(self):
+		return self.addr
+
+	def updateSnakes(self, screen, keys_pressed): # keys_pressed = {addr, key}
+		self.game_state.updateSnakes(screen, keys_pressed)
+
+	def updateFood(self, screen):
+		self.game_state.updateFood(screen)
+
+	def blit(self, screen):
+		self.game_state.blit(screen)

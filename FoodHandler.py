@@ -28,8 +28,6 @@ class FoodHandler(object):
             isValidLoc = True
         self.foods.append(Food((food_x, food_y)))
 
-
-         
     def deleteFood(self, food):
         self.foods.remove(food)
          

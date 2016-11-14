@@ -3,6 +3,8 @@ from Food import *
 from FoodHandler import *
 from Snake import *
 from constants import *
+from Host import Host
+from Client import Client
 
 # Lowest possible user event ID (generally 24)
 USEREVENT = pygame.USEREVENT
@@ -19,36 +21,50 @@ class GameWindow(object):
         self.screen = pygame.display.set_mode(self.size)
 
     def runGame(self):
-        #init foodhandler and its timer
-        foodHandler = FoodHandler()
+        # #init foodhandler and its timer
+        # foodHandler = FoodHandler()
         pygame.time.set_timer(CREATE_FOOD, FOOD_TIMER)
 
-        # init player's snake and move-snake timer
-        s = Snake((10, 10), SNAKE_LENGTH, SNAKE_HD_COLOR, SNAKE_BD_COLOR, (0, +1))
+        # # init player's snake and move-snake timer
+        # s = Snake((10, 10), SNAKE_LENGTH, SNAKE_HD_COLOR, SNAKE_BD_COLOR, (0, +1))
         pygame.time.set_timer(MOVE_SNAKE, SNAKE_TIMER)
-        snakes = [s]
+        # snakes = [s]
+        self.player = Host("localhost", 9999)
 
-        while True:
+        keys_pressed = {} # must be persistent until snakes update
+        while True and not self.player == None:
             self.time.tick(self.fps)
             self.screen.fill(SCR_BG_COLOR)
  
-            for event in pygame.event.get([pygame.QUIT, CREATE_FOOD, MOVE_SNAKE]):
+            # get keys pressed for everyone
+            # for host
+            if type(self.player) == Host:
+                for event in pygame.event.get([pygame.KEYDOWN]):
+                    keys_pressed[self.player.getKey()] = event.key
+            # todo: for client
+            # todo: tell host to broadcast keys to everyone
+
+            for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     exit()
                 elif event.type == CREATE_FOOD:
-                    foodHandler.update(snakes, self.screen) 
+                    # foodHandler.update(snakes, self.screen)
+                    self.player.updateFood(self.screen)
                 elif event.type == MOVE_SNAKE:
-                    for snake in snakes:
-                        snake.update(self.screen)
-                    for snake in snakes: # temp, check if snakes collide
-                        if snake.collideSnake(snakes):
-                            snakes.remove(snake)
-                    foodHandler.eatFood(snakes)
+                    self.player.updateSnakes(self.screen, keys_pressed)
+                    keys_pressed = {}
+                    # for snake in snakes:
+                    #     snake.update(self.screen)
+                    # for snake in snakes: # temp, check if snakes collide
+                    #     if snake.collideSnake(snakes):
+                    #         snakes.remove(snake)
+                    # foodHandler.eatFood(snakes)
 
             # blit in case not updated in event for loop
-            foodHandler.blit(self.screen)
-            for snake in snakes:
-                snake.blit(self.screen)
+            self.player.blit(self.screen)
+            # foodHandler.blit(self.screen)
+            # for snake in snakes:
+            #     snake.blit(self.screen)
 
             pygame.display.update()
 

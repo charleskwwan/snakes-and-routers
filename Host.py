@@ -29,8 +29,9 @@ class Host(Player, Server):
 		# set up dict to store open channels
 		self.clients = {}
 
-		# todo: add host's snake
-		# self.game_state.addSnake((ip, port), (0, 0), (+1, 0))
+		# create snake for host
+		cell, direction = self.game_state.getEmptyInitialPosition()
+		self.game_state.addSnake((ip, port), cell, direction)
 		# print jsonpickle.encode(self.game_state)
 
 	def Connected(self, channel, addr):

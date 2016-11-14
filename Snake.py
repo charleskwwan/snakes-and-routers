@@ -22,7 +22,9 @@ class SnakePart(object):
 
 # Snake represents the entire snake
 class Snake(object):
-	def __init__(self, cell=(0, 0), length=10, hd_color=(0, 150, 0), \
+	DEFAULT_LEN = 10
+	
+	def __init__(self, cell=(0, 0), length=DEFAULT_LEN, hd_color=(0, 150, 0), \
 		bd_color=(0, 255, 0), direction=(+1, 0)):
 		# positioning
 		self.col = cell[0]
@@ -62,25 +64,20 @@ class Snake(object):
 		self.head.blit(screen)
 
 	# move snake, potentially with change in direction
-	def move(self):
+	def move(self, key_pressed):
 		# change direction if necessary
-		for event in pygame.event.get():
-			if event.type == pygame.KEYDOWN:
-				if event.key == pygame.K_UP and self.dir_row != +1:
-					self.dir_col = 0
-					self.dir_row = -1
-				elif event.key == pygame.K_DOWN and self.dir_row != -1:
-					self.dir_col = 0
-					self.dir_row = +1
-				elif event.key == pygame.K_LEFT and self.dir_col != +1:
-					self.dir_col = -1
-					self.dir_row = 0
-				elif event.key == pygame.K_RIGHT and self.dir_col != -1:
-					self.dir_col = +1
-					self.dir_row = 0
-				else:
-					continue
-				break
+		if key_pressed == pygame.K_UP and self.dir_row != +1:
+			self.dir_col = 0
+			self.dir_row = -1
+		elif key_pressed == pygame.K_DOWN and self.dir_row != -1:
+			self.dir_col = 0
+			self.dir_row = +1
+		elif key_pressed == pygame.K_LEFT and self.dir_col != +1:
+			self.dir_col = -1
+			self.dir_row = 0
+		elif key_pressed == pygame.K_RIGHT and self.dir_col != -1:
+			self.dir_col = +1
+			self.dir_row = 0
 		# extend/move snake based on direction
 		self.tail.insert(0, SnakePart((self.col, self.row), self.bd_color))
 		self.col = (self.col + self.dir_col) % (SCR_WIDTH / CELL_LEN)
@@ -114,6 +111,6 @@ class Snake(object):
 		self.score += 1
 		self.length += 1
 
-	def update(self, screen):
-		self.move()
+	def update(self, screen, key_pressed):
+		self.move(key_pressed)
 		self.blit(screen)
