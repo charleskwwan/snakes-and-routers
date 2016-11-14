@@ -7,8 +7,8 @@ import GameState
 class Player(object):
 	# validTypes = ["input", "joinGame", "newSnake", "gameState", "removeSnake"]
 	validTypes = \
-	INPUT, JOIN_GAME, NEW_SNAKE, GAME_STATE, REMOVE_SNAKE  = \
-	["input", "joinGame", "newSnake", "gameState", "removeSnake"]
+	INPUT, JOIN_GAME, NEW_SNAKE, GAME_STATE, REMOVE_SNAKE, NEW_FOOD  = \
+	["input", "joinGame", "newSnake", "gameState", "removeSnake", "newFood"]
 
 	DATA_TAG = "data"
 
@@ -34,8 +34,8 @@ class Player(object):
 	def updateSnakes(self, screen): # keys_pressed = {addr, key}
 		self.game_state.updateSnakes(screen)
 
-	def updateFood(self, screen):
-		self.game_state.updateFood(screen)
+	def updateFood(self, screen, host=None):
+		self.game_state.updateFood(screen, host=host)
 
 	def blit(self, screen):
 		self.game_state.blit(screen)

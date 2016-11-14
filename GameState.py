@@ -1,6 +1,7 @@
 import json
 import jsonpickle
 from Snake import Snake
+from Food import Food
 from FoodHandler import FoodHandler
 from constants import *
 import random
@@ -33,6 +34,9 @@ class GameState(FoodHandler):
 
     def removeSnake(self, snake_id):
         del self.id_snakes[snake_id]
+
+    def addFood(self, food_cell):
+        self.foods.append(Food(food_cell))
 
     class CollisionException(Exception):
         pass
@@ -70,9 +74,6 @@ class GameState(FoodHandler):
 
     def updateSnakes(self, screen):
         # move snakes
-        print "keys: ", self.keys_pressed
-        print "snakes: ", self.id_snakes
-
         for k in self.id_snakes:
             pressed = self.keys_pressed[k] if k in self.keys_pressed else None 
             self.id_snakes[k].update(screen, pressed)
@@ -86,9 +87,11 @@ class GameState(FoodHandler):
         # check eat food
         super(GameState, self).eatFood(snakes)
 
-    def updateFood(self, screen):
+    def updateFood(self, screen, host=None):
         snakes = [self.id_snakes[k] for k in self.id_snakes]
-        super(GameState, self).update(snakes, screen) # call foodhandler's
+        food_cell = super(GameState, self).createFood(snakes)
+        if food_cell != None and host != None:
+            host.sendNewFood(food_cell)
 
     def blit(self, screen):
         super(GameState, self).blit(screen)
