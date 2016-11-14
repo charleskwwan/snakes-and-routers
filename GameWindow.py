@@ -5,6 +5,8 @@ from Snake import *
 from constants import *
 from Host import Host
 from Client import Client
+from button import *
+
 
 # Lowest possible user event ID (generally 24)
 USEREVENT = pygame.USEREVENT
@@ -13,16 +15,17 @@ MOVE_SNAKE = USEREVENT + 2
 
 class GameWindow(object):
     def __init__(self):
-        pygame.init()         
-
+        pygame.init()
         self.time = pygame.time.Clock()
         self.fps = FPS
         self.size = self.width, self.height = SCR_WIDTH, SCR_HEIGHT
         self.screen = pygame.display.set_mode(self.size)
+        self.state = "Menu"        
 
     def runGame(self):
         # #init foodhandler and its timer
         # foodHandler = FoodHandler()
+        self.state = "Game"
         pygame.time.set_timer(CREATE_FOOD, FOOD_TIMER)
 
         # # init player's snake and move-snake timer
@@ -70,28 +73,29 @@ class GameWindow(object):
             pygame.display.update()
 
     def runMenu(self):
-        while True:
+        while self.state == "Menu":
             self.time.tick(self.fps)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     exit()
-            self.screen.fill((255, 255, 255))
+            self.screen.fill(SCR_BG_COLOR)
             text = pygame.font.SysFont('Times New Roman', 40).render("Snakes and routers", True, 
                                     (0, 0, 0))
+            button("Start!", 250 - 50, 250 - 25, 100, 50, (0, 0, 0), (0, 255, 0), self.screen, self.runGame)
             self.screen.blit(text, (250, 250))
+
             pygame.display.update()
              
     def run(self):
-        inGame = True
-        inMenu = True
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     exit()
-            if inGame:
+            if self.state == "Game":
                 self.runGame()
-            elif inMenu:
+            elif self.state == "Menu":
                 self.runMenu()
+
 
 def main():
     app = GameWindow()

@@ -1,6 +1,6 @@
 import pygame
 import random
-from food import *
+from Food import *
 from constants import *
 
 class FoodHandler(object):
