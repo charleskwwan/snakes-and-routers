@@ -14,7 +14,7 @@ class GameState(FoodHandler):
         super(GameState, self).__init__()
 
         if json:
-            src = jsonpickle.decode(json)
+            src = jsonpickle.decode(json, keys=True)
             self.keys_pressed = src.keys_pressed
             self.id_snakes = src.id_snakes
             self.foods = src.foods
@@ -26,7 +26,7 @@ class GameState(FoodHandler):
             self.dim = dim
 
     def stringify(self): 
-        return jsonpickle.encode(self)
+        return jsonpickle.encode(self, keys=True)
 
     def addSnake(self, snake_id, cell, direction):
         self.id_snakes[snake_id] = Snake(cell=cell, direction=direction)
@@ -70,6 +70,7 @@ class GameState(FoodHandler):
 
     def updateSnakes(self, screen):
         # move snakes
+
         for k in self.id_snakes:
             pressed = self.keys_pressed[k] if k in self.keys_pressed else None 
             self.id_snakes[k].update(screen, pressed)
