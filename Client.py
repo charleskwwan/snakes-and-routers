@@ -27,7 +27,9 @@ class Client(Player, ConnectionListener):
 		self.Send(message)
 
 	def Network_input(self, message):
-                print "got some input"
+                print "received input from host"
+                print message
+                print self.game_state.id_snakes
 		data = message[Player.DATA_TAG]
 		self.game_state.addKeyPressed(data["addr"], data["key_pressed"])
 

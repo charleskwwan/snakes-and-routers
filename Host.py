@@ -10,7 +10,6 @@ class ClientChannel(Channel):
 		self.addr = addr
  
 	def Network_joinGame(self, message):
-                print "got join game request"
 		join_msg = self.host.createMessage(Player.JOIN_GAME, self.addr)
 		self.Send(join_msg)
 
@@ -21,9 +20,8 @@ class ClientChannel(Channel):
 			jsonpickle.encode(self.host.game_state))
 		self.Send(state_msg)
 
-		def Network_input(self, message):
-				
-				self.host.sendKeypress(self.addr, message[Player.DATA_TAG])
+        def Network_input(self, message):
+                self.host.sendKeypress(self.addr, message[Player.DATA_TAG])
 
 	def sendNewSnake(self, addr):
 		snake_msg = self.host.createMessage(Player.NEW_SNAKE, addr)
