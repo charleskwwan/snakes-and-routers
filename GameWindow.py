@@ -37,6 +37,7 @@ class GameWindow(object):
         while True and not self.player == None:
             self.time.tick(self.fps)
             self.screen.fill(SCR_BG_COLOR)
+            self.player.update()
  
             # get keys pressed for everyone
             for event in pygame.event.get([pygame.KEYDOWN]):
@@ -76,8 +77,9 @@ class GameWindow(object):
         self.player.joinGame(("localhost", 9999))
         pygame.time.set_timer(MOVE_SNAKE, SNAKE_TIMER)
         while True and not self.player == None:
+            self.time.tick(self.fps)
+            self.screen.fill(SCR_BG_COLOR)
             self.player.update()
-            self.player.updateSnakes(self.screen)
             for event in pygame.event.get([pygame.KEYDOWN]):
                 if event.key != pygame.K_UP and event.key != pygame.K_DOWN and \
                    event.key != pygame.K_LEFT and event.key != pygame.K_RIGHT:

@@ -15,10 +15,10 @@ class ClientChannel(Channel):
 		self.Send(join_msg)
 
 		# add new player to game state
-		cell, direction = host.game_state.getEmptyInitialPosition()
-		host.game_state.addSnake(self.addr, cell, direction)
+		cell, direction = self.host.game_state.getEmptyInitialPosition()
+		self.host.game_state.addSnake(self.addr, cell, direction)
 		state_msg = self.host.createMessage(Player.GAME_STATE,
-			jsonpickle.encode(host.game_state))
+			jsonpickle.encode(self.host.game_state))
 		self.Send(state_msg)
 
 		def Network_input(self, message):
