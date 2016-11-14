@@ -71,6 +71,30 @@ class GameWindow(object):
             #     snake.blit(self.screen)
 
             pygame.display.update()
+    def runClient(self):
+        self.player = Client()
+        self.player.joinGame(("localhost", 9999))
+        pygame.time.set_timer(MOVE_SNAKE, SNAKE_TIMER)
+        while True and not self.player == None:
+            self.player.update()
+            self.player.updateSnakes(self.screen)
+            for event in pygame.event.get([pygame.KEYDOWN]):
+                if event.key != pygame.K_UP and event.key != pygame.K_DOWN and \
+                   event.key != pygame.K_LEFT and event.key != pygame.K_RIGHT:
+                    continue
+                elif type(self.player) == Client:
+                    self.player.sendInput(event.key)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    exit()
+                elif event.type == MOVE_SNAKE:
+                    self.player.updateSnakes(self.screen)
+
+            self.player.blit(self.screen)
+            pygame.display.update()
+
+            
+
 
     def runMenu(self):
         while self.state == "Menu":
@@ -79,10 +103,14 @@ class GameWindow(object):
                 if event.type == pygame.QUIT:
                     exit()
             self.screen.fill(SCR_BG_COLOR)
-            text = pygame.font.SysFont('Times New Roman', 40).render("Snakes and routers", True, 
-                                    (0, 0, 0))
-            button("Start!", 250 - 50, 250 - 25, 100, 50, (0, 0, 0), (0, 255, 0), self.screen, self.runGame)
-            self.screen.blit(text, (250, 250))
+            #text = pygame.font.SysFont('Times New Roman', 40).render("Snakes and routers", True, 
+            #                        (0, 0, 0))
+            #self.screen.blit(text, (250, 250))
+            button("Host!", 250 - 50, 250 - 50, 100, 50, (0, 120, 0), (0, 255, 0), self.screen, self.runGame)
+            button("Connect!", 250 - 50, 250 + 50, 100, 50, (0, 120, 0), (0, 255, 0), self.screen, self.runClient)
+
+            
+
 
             pygame.display.update()
              

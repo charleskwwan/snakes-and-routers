@@ -10,6 +10,7 @@ class ClientChannel(Channel):
 		self.addr = addr
  
 	def Network_joinGame(self, message):
+                print "got join game request"
 		join_msg = self.host.createMessage(Player.JOIN_GAME, self.addr)
 		self.Send(join_msg)
 
