@@ -13,7 +13,7 @@ class ClientChannel(Channel):
 		# todo: create new player in host
 		join_msg = self.host.createMessage(Player.JOIN_GAME, self.addr)
 		self.Send(join_msg)
-		state_msg = self.host.createMessage(Player.GAME_STATE, \
+		state_msg = self.host.createMessage(Player.GAME_STATE,
 			jsonpickle.encode(host.game_state))
 		# print state_msg
 		self.Send(state_msg)

@@ -29,9 +29,8 @@ class GameWindow(object):
         # s = Snake((10, 10), SNAKE_LENGTH, SNAKE_HD_COLOR, SNAKE_BD_COLOR, (0, +1))
         pygame.time.set_timer(MOVE_SNAKE, SNAKE_TIMER)
         # snakes = [s]
-        self.player = Host("localhost", 9999)
+        self.player = Host("localhost", 9999) # in actual, should be decided already
 
-        keys_pressed = {} # must be persistent until snakes update
         while True and not self.player == None:
             self.time.tick(self.fps)
             self.screen.fill(SCR_BG_COLOR)
@@ -40,7 +39,7 @@ class GameWindow(object):
             # for host
             if type(self.player) == Host:
                 for event in pygame.event.get([pygame.KEYDOWN]):
-                    keys_pressed[self.player.getKey()] = event.key
+                    self.player.addKeyPressed(self.player.getKey(), event.key)
             # todo: for client
             # todo: tell host to broadcast keys to everyone
 
@@ -51,8 +50,7 @@ class GameWindow(object):
                     # foodHandler.update(snakes, self.screen)
                     self.player.updateFood(self.screen)
                 elif event.type == MOVE_SNAKE:
-                    self.player.updateSnakes(self.screen, keys_pressed)
-                    keys_pressed = {}
+                    self.player.updateSnakes(self.screen)
                     # for snake in snakes:
                     #     snake.update(self.screen)
                     # for snake in snakes: # temp, check if snakes collide

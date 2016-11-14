@@ -8,16 +8,19 @@ import random
 class GameState(FoodHandler):
     CELL_LEN = 10
 
-    def __init__(self, json="", id_snakes={}, foods=[], dim=(500, 500)):
+    def __init__(self, keys_pressed={}, json="", id_snakes={}, foods=[], 
+        dim=(500, 500)):
         # initialize foodhandler, default maxfoods = 10
         super(GameState, self).__init__()
 
         if json:
             src = jsonpickle.decode(json)
+            self.keys_pressed = src.keys_pressed
             self.id_snakes = src.id_snakes
             self.foods = src.foods
             self.dim = src.dim
         else:
+            self.keys_pressed = keys_pressed
             self.id_snakes = id_snakes
             self.foods = foods # overrides food handlers if necessary
             self.dim = dim
@@ -62,10 +65,13 @@ class GameState(FoodHandler):
 
             return (init_col, init_row), (dir_col, dir_row)
 
-    def updateSnakes(self, screen, keys_pressed):
+    def addKeyPressed(self, snake_id, pressed):
+        self.keys_pressed[snake_id] = pressed
+
+    def updateSnakes(self, screen):
         # move snakes
         for k in self.id_snakes:
-            pressed = keys_pressed[k] if k in keys_pressed else None
+            pressed = self.keys_pressed[k] if k in self.keys_pressed else None 
             self.id_snakes[k].update(screen, pressed)
 
         snakes = [self.id_snakes[k] for k in self.id_snakes]

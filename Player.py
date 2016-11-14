@@ -28,8 +28,11 @@ class Player(object):
 	def getKey(self):
 		return self.addr
 
-	def updateSnakes(self, screen, keys_pressed): # keys_pressed = {addr, key}
-		self.game_state.updateSnakes(screen, keys_pressed)
+	def addKeyPressed(self, addr, pressed):
+		self.game_state.addKeyPressed(addr, pressed)
+
+	def updateSnakes(self, screen): # keys_pressed = {addr, key}
+		self.game_state.updateSnakes(screen)
 
 	def updateFood(self, screen):
 		self.game_state.updateFood(screen)
