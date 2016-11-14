@@ -36,12 +36,15 @@ class GameWindow(object):
             self.screen.fill(SCR_BG_COLOR)
  
             # get keys pressed for everyone
-            # for host
-            if type(self.player) == Host:
-                for event in pygame.event.get([pygame.KEYDOWN]):
+            for event in pygame.event.get([pygame.KEYDOWN]):
+                if event.key != pygame.K_UP and event.key != pygame.K_DOWN and \
+                   event.key != pygame.K_LEFT and event.key != pygame.K_RIGHT:
+                    continue
+                elif type(self.player) == Host:
                     self.player.addKeyPressed(self.player.getKey(), event.key)
-            # todo: for client
-            # todo: tell host to broadcast keys to everyone
+                    self.player.sendKeypress(self.player.getKey(), event.key)
+                elif type(self.player) == Client:
+                    self.player.sendInput(event.key)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:

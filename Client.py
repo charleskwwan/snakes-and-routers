@@ -22,6 +22,14 @@ class Client(Player, ConnectionListener):
 		encoded_state = message[Player.DATA_TAG]
 		self.game_state = jsonpickle.decode(encoded_state)
 
+	def sendInput(self, key_pressed):
+		message = self.createMessage(Player.INPUT, key_pressed)
+		self.Send(message)
+
+	def Network_input(self, message):
+		data = message[Player.DATA_TAG]
+		self.game_state.addKeyPressed(data["addr"], data["key_pressed"])
+
 	def update(self):
 		connection.Pump()
 		self.Pump()
