@@ -21,6 +21,7 @@ class ClientChannel(Channel):
 
 	def Network_input(self, message):
 		# key pressed is at data tag
+		self.host.game_state.addKeyPressed(self.addr, message[Player.DATA_TAG])
 		self.host.sendKeypress(self.addr, message[Player.DATA_TAG])
 		self.host.game_state.addKeyPressed(self.addr, message[Player.DATA_TAG])
 
@@ -50,10 +51,15 @@ class Host(Player, Server):
 			self.clients[addr] = channel
 
 	def sendKeypress(self, addr, keypress):
-			data = {"addr" : addr, "key_pressed": keypress}
-			msg = self.createMessage(Player.INPUT, data)
-			for client in self.clients.values():
-				client.Send(msg)
+		data = {"addr" : addr, "key_pressed": keypress}
+		msg = self.createMessage(Player.INPUT, data)
+		for client in self.clients.values():
+			client.Send(msg)
+
+	def sendNewFood(self, food_cell):
+		food_msg = self.createMessage(Player.NEW_FOOD, food_cell)
+		for client in self.clients.values():
+			client.Send(food_msg)
 
 	def update(self):
 		self.Pump()

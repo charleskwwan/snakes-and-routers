@@ -9,9 +9,9 @@ class FoodHandler(object):
         self.foodTime = pygame.time.get_ticks()
         self.foods = []
         
-    def createFood(self, snakes, screen):
+    def createFood(self, snakes):
         if len(self.foods) > self.maxFoods:
-            return
+            return None
         isValidLoc = False
         while not isValidLoc:
             # Picking random coordinates 
@@ -26,7 +26,9 @@ class FoodHandler(object):
                 if food.grid_x == food_x or food.grid_y == food_y:
                     continue
             isValidLoc = True
-        self.foods.append(Food((food_x, food_y)))
+        new_food = Food((food_x, food_y))
+        self.foods.append(new_food)
+        return food_x, food_y
 
     def deleteFood(self, food):
         self.foods.remove(food)
@@ -43,7 +45,7 @@ class FoodHandler(object):
             food.blit(screen)
 
     def update(self, snakes, screen):
-        self.createFood(snakes, screen)
+        self.createFood(snakes)
         self.blit(screen)
  
      

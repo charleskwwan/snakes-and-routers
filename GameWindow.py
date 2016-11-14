@@ -24,14 +24,9 @@ class GameWindow(object):
 
     def runGame(self):
         # #init foodhandler and its timer
-        # foodHandler = FoodHandler()
         self.state = "Game"
         pygame.time.set_timer(CREATE_FOOD, FOOD_TIMER)
-
-        # # init player's snake and move-snake timer
-        # s = Snake((10, 10), SNAKE_LENGTH, SNAKE_HD_COLOR, SNAKE_BD_COLOR, (0, +1))
         pygame.time.set_timer(MOVE_SNAKE, SNAKE_TIMER)
-        # snakes = [s]
         self.player = Host("localhost", 9999) # in actual, should be decided already
 
         while True and not self.player == None:
@@ -47,31 +42,21 @@ class GameWindow(object):
                 elif type(self.player) == Host:
                     self.player.addKeyPressed(self.player.getKey(), event.key)
                     self.player.sendKeypress(self.player.getKey(), event.key)
-                elif type(self.player) == Client:
-                    self.player.sendInput(event.key)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     exit()
                 elif event.type == CREATE_FOOD:
                     # foodHandler.update(snakes, self.screen)
-                    self.player.updateFood(self.screen)
+                    self.player.updateFood(self.screen, host=self.player)
                 elif event.type == MOVE_SNAKE:
                     self.player.updateSnakes(self.screen)
-                    # for snake in snakes:
-                    #     snake.update(self.screen)
-                    # for snake in snakes: # temp, check if snakes collide
-                    #     if snake.collideSnake(snakes):
-                    #         snakes.remove(snake)
-                    # foodHandler.eatFood(snakes)
 
             # blit in case not updated in event for loop
             self.player.blit(self.screen)
-            # foodHandler.blit(self.screen)
-            # for snake in snakes:
-            #     snake.blit(self.screen)
 
             pygame.display.update()
+
     def runClient(self):
         self.player = Client()
         self.player.joinGame(("localhost", 9999))
@@ -81,13 +66,15 @@ class GameWindow(object):
             self.screen.fill(SCR_BG_COLOR)
             self.player.update()
 
+            # get input and send to host
             for event in pygame.event.get([pygame.KEYDOWN]):
                 if event.key != pygame.K_UP and event.key != pygame.K_DOWN and \
                    event.key != pygame.K_LEFT and event.key != pygame.K_RIGHT:
                     continue
                 elif type(self.player) == Client:
                     self.player.sendInput(event.key)
-                    
+
+            # move snake based on user input
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     exit()
@@ -96,9 +83,6 @@ class GameWindow(object):
 
             self.player.blit(self.screen)
             pygame.display.update()
-
-            
-
 
     def runMenu(self):
         while self.state == "Menu":

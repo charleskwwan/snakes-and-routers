@@ -30,6 +30,10 @@ class Client(Player, ConnectionListener):
 		data = message[Player.DATA_TAG]
 		self.game_state.addKeyPressed(data["addr"], data["key_pressed"])
 
+	def Network_newFood(self, message):
+		food_cell = message[Player.DATA_TAG]
+		self.game_state.addFood(food_cell)
+
 	def update(self):
 		connection.Pump()
 		self.Pump()
