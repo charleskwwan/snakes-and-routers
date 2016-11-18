@@ -2,11 +2,13 @@ import json
 import jsonpickle
 from Snake import Snake
 from Food import Food
-from FoodHandler import FoodHandler
 from constants import *
 import random
 
-class GameState(FoodHandler):
+class CollisionException(Exception):
+        pass
+
+class GameState(object):
     CELL_LEN = 10
 
     def __init__(self, keys_pressed={}, json="", id_snakes={}, foods=[], 
@@ -29,6 +31,12 @@ class GameState(FoodHandler):
     def stringify(self): 
         return jsonpickle.encode(self, keys=True)
 
+    def getSnakes(self):
+        return self.id_snakes.values()
+
+    def getFoods(self):
+        return self.foods
+
     def addSnake(self, snake_id, cell, direction):
         self.id_snakes[snake_id] = Snake(cell=cell, direction=direction)
 
@@ -38,9 +46,14 @@ class GameState(FoodHandler):
     def addFood(self, food_cell):
         self.foods.append(Food(food_cell))
 
-    class CollisionException(Exception):
-        pass
+    def eatFoods(self):
+        for snake in self.id_snakes.values():
+            for food in self.foods:
+                if snake.collidesWith((food.grid_x, food.grid_y)):
+                    self.foods.remove(food)
+                    snake.increaseLength()
 
+    # gets a random position
     def getEmptyInitialPosition(self):
         random.seed()
         is_empty = False
@@ -72,11 +85,11 @@ class GameState(FoodHandler):
     def addKeyPressed(self, snake_id, pressed):
         self.keys_pressed[snake_id] = pressed
 
-    def updateSnakes(self, screen):
+    def updateSnakes(self):
         # move snakes
         for k in self.id_snakes:
-            pressed = self.keys_pressed[k] if k in self.keys_pressed else None 
-            self.id_snakes[k].update(screen, pressed)
+            pressed = self.keys_pressed[k] if k in self.keys_pressed else None
+            self.id_snakes[k].move(pressed)
 
         snakes = [self.id_snakes[k] for k in self.id_snakes]
         # check collisions
@@ -85,15 +98,10 @@ class GameState(FoodHandler):
                 self.id_snakes[k] = None # should kill game, for now
             # todo: respawn snake
         # check eat food
-        super(GameState, self).eatFood(snakes)
-
-    def updateFood(self, screen, host=None):
-        snakes = [self.id_snakes[k] for k in self.id_snakes]
-        food_cell = super(GameState, self).createFood(snakes)
-        if food_cell != None and host != None:
-            host.sendNewFood(food_cell)
+        self.eatFoods()
 
     def blit(self, screen):
-        super(GameState, self).blit(screen)
+        for f in self.foods:
+            f.blit(screen)
         for k in self.id_snakes:
             self.id_snakes[k].blit(screen)

@@ -20,17 +20,15 @@ class Player(ConnectionListener):
 	def addKeyPressed(self, addr, pressed):
 		self.game_state.addKeyPressed(addr, pressed)
 
-	def updateSnakes(self, screen): # keys_pressed = {addr, key}
-		self.game_state.updateSnakes(screen)
-
-	def updateFood(self, screen, host=None):
-		self.game_state.updateFood(screen, host=host)
+	def updateSnakes(self): # keys_pressed = {addr, key}
+		self.game_state.updateSnakes()
 
 	def blit(self, screen):
 		self.game_state.blit(screen)
 
 	# networking functions
 	def joinGame(self, hostaddr):
+		print "Joining game...\n"
 		self.hostaddr = hostaddr
 		self.Connect(self.hostaddr)
 		message = Messaging.createMessage(Messaging.JOIN_GAME, "")
@@ -41,7 +39,7 @@ class Player(ConnectionListener):
 
 	def Network_gameState(self, message):
 		encoded_state = message[Messaging.DATA_TAG]
-		self.game_state = GameState(json=encoded_state)
+		self.game_state = GameState.GameState(json=encoded_state)
 
 	def sendInput(self, key_pressed):
 		if self.hostaddr == None:
@@ -57,6 +55,10 @@ class Player(ConnectionListener):
 	def Network_newFood(self, message):
 		food_cell = message[Messaging.DATA_TAG]
 		self.game_state.addFood(food_cell)
+
+	def Network_newSnake(self, message):
+		data = message[Messaging.DATA_TAG]
+		self.game_state.addSnake(data["addr"], data["cell"], data["direction"])
 
 	def updateConnection(self):
 		connection.Pump()

@@ -6,11 +6,9 @@ from constants import *
 class FoodHandler(object):
     def __init__(self, maxfoods = 10):
         self.maxFoods = maxfoods
-        self.foodTime = pygame.time.get_ticks()
-        self.foods = []
-        
-    def createFood(self, snakes):
-        if len(self.foods) > self.maxFoods:
+
+    def createFood(self, snakes, foods, foodcnt):
+        if foodcnt > self.maxFoods:
             return None
         isValidLoc = False
         while not isValidLoc:
@@ -22,30 +20,8 @@ class FoodHandler(object):
             for snake in snakes:
                 if snake.collidesWith((food_x, food_y)):
                     continue
-            for food in self.foods:
+            for food in foods:
                 if food.grid_x == food_x or food.grid_y == food_y:
                     continue
             isValidLoc = True
-        new_food = Food((food_x, food_y))
-        self.foods.append(new_food)
-        return food_x, food_y
-
-    def deleteFood(self, food):
-        self.foods.remove(food)
-         
-    def eatFood(self, snakes):
-        for snake in snakes:
-            for food in self.foods:
-                if snake.collidesWith((food.grid_x, food.grid_y)):
-                    self.deleteFood(food)
-                    snake.increaseLength()
-
-    def blit(self, screen):
-        for food in self.foods:
-            food.blit(screen)
-
-    def update(self, snakes, screen):
-        self.createFood(snakes)
-        self.blit(screen)
- 
-     
+        return food_x, food_y     
