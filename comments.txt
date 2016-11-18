@@ -1,0 +1,2 @@
+separate server and player
+spend time - design networks stuff better => save time in terms of coding
