@@ -1,6 +1,7 @@
-from Player import Player
 from PodSixNet.Channel import Channel
 from PodSixNet.Server import Server
+import Messaging
+import GameState
 
 # class for open channel with a client
 class ClientChannel(Channel):
@@ -9,31 +10,33 @@ class ClientChannel(Channel):
 		self.addr = addr
  
 	def Network_joinGame(self, message):
-		join_msg = self.host.createMessage(Player.JOIN_GAME, self.addr)
+		join_msg = Messaging.createMessage(Messaging.JOIN_GAME, 
+                                                   self.addr)
 		self.Send(join_msg)
 
 		# add new player to game state
 		cell, direction = self.host.game_state.getEmptyInitialPosition()
 		self.host.game_state.addSnake(self.addr, cell, direction)
-		state_msg = self.host.createMessage(Player.GAME_STATE,
+		state_msg = Messaging.createMessage(Messaging.validTypes.GAME_STATE,
 			self.host.game_state.stringify())
 		self.Send(state_msg)
 
 	def Network_input(self, message):
 		# key pressed is at data tag
-		self.host.game_state.addKeyPressed(self.addr, message[Player.DATA_TAG])
-		self.host.sendKeypress(self.addr, message[Player.DATA_TAG])
-		self.host.game_state.addKeyPressed(self.addr, message[Player.DATA_TAG])
+		self.host.game_state.addKeyPressed(self.addr, message[Messaging.DATA_TAG])
+		self.host.sendKeypress(self.addr, message[Messaging.DATA_TAG])
+		self.host.game_state.addKeyPressed(self.addr, message[Messaging.DATA_TAG])
 
 	def sendNewSnake(self, addr):
-		snake_msg = self.host.createMessage(Player.NEW_SNAKE, addr)
+		snake_msg = Messaging.createMessage(Messaging.validTypes.NEW_SNAKE, addr)
 		self.Send(snake_msg)
 
-class Host(Player, Server):
+class Host(Server):
 	def __init__(self, ip, port):
 		# initialize super vars
 		# inits address and game state in player
-		Player.__init__(self, ip=ip, port=port)
+		self.addr = (ip, port) # used as player's unique id
+		self.game_state = GameState.GameState()
 		# inits server with local address
 		Server.__init__(self, channelClass=ClientChannel, localaddr=(ip, port))
 
@@ -52,12 +55,12 @@ class Host(Player, Server):
 
 	def sendKeypress(self, addr, keypress):
 		data = {"addr" : addr, "key_pressed": keypress}
-		msg = self.createMessage(Player.INPUT, data)
+		msg = messaging.createMessage(Messaging.validTypes.INPUT, data)
 		for client in self.clients.values():
 			client.Send(msg)
 
 	def sendNewFood(self, food_cell):
-		food_msg = self.createMessage(Player.NEW_FOOD, food_cell)
+		food_msg = messaging.createMessage(Messaging.validTypes.NEW_FOOD, food_cell)
 		for client in self.clients.values():
 			client.Send(food_msg)
 
