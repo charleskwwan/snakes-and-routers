@@ -1,16 +1,17 @@
 import pygame
+from Constants import *
 
 class Food(object):
-    def __init__(self, pos, color = (255, 0, 0)):
-        self.dim = 10
-        self.grid_x = pos[0]
-        self.grid_y = pos[1]
-        self.screen_x = pos[0] * self.dim
-        self.screen_y = pos[1] * self.dim
+    FOOD_COLOR = 255, 0, 0
+
+    def __init__(self, cell, color=FOOD_COLOR):
+        self.col = cell[0]
+        self.row = cell[1]
+        self.x =  cell[0] * CELL_LEN # actual pixel positions
+        self.y = cell[1] * CELL_LEN
         self.color = color
 
+    # draw food on screen
     def blit(self, screen):
-        """ Draws food on screen """
-        rect = pygame.Rect(self.screen_x, self.screen_y, self.dim, self.dim)
+        rect = pygame.Rect(self.x, self.y, CELL_LEN, CELL_LEN)
         pygame.draw.rect(screen, self.color, rect)
-

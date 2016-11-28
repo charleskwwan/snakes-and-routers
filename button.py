@@ -1,7 +1,5 @@
 import pygame
 
-
-
 def button(msg, x, y, w, h, ic, ac, screen, action=None):
     """
     Button function from 

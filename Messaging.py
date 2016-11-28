@@ -1,16 +1,25 @@
-# Module for creating messages
+# Module for creating network messages in snake
 
-# valid types of messages
-validTypes = \
-INPUT, JOIN_GAME, NEW_SNAKE, GAME_STATE, REMOVE_SNAKE, NEW_FOOD  = \
-["input", "joinGame", "newSnake", "gameState", "removeSnake", "newFood"]
-DATA_TAG = "data"
+class ConnectionException(Exception):
+    pass
 
-# create a valid image ofr podsixnet
-def createMessage(ty, data):
-	if ty in validTypes:
-		# package as sendable dictionary
-		message = {"action": ty, DATA_TAG: data}
-		return message
-	else:
-		raise LookupError("Invalid message type")
+class InvalidMessageType(Exception):
+    pass
+
+# abstract class, do not instantiate
+class Messaging(object):
+    validTypes = \
+    JOIN_GAME, NEW_SNAKE, GAME_STATE, INPUT, MOVE_SNAKE, REMOVE_SNAKE, NEW_FOOD, BLANK = \
+    ["joinGame", "newSnake", "gameState", "input", "moveSnake", "removeSnake", "newFood", "blank"]
+    DATA_TAG = "data"
+    TIMESTAMP_TAG = "timestamp"
+
+    # create a valid message for podsixnet
+    @classmethod
+    def createMessage(self, ty, timestamp, data):
+        if ty in Messaging.validTypes:
+            # package in sendable dictionary
+            message = {"action": ty, Messaging.TIMESTAMP_TAG: timestamp, Messaging.DATA_TAG: data}
+            return message
+        else:
+            raise InvalidMessageType  

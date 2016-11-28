@@ -1,94 +1,178 @@
+import PodSixNet
 from PodSixNet.Channel import Channel
 from PodSixNet.Server import Server
-import Messaging
-import GameState
-from FoodHandler import FoodHandler
+from Messaging import *
+from GameState import *
+from EventQueueHandler import *
 
-# class for open channel with a client
+# timestamps for clients and host:
+#   - clients send only ticks to host
+#   - host sends tick AND priority to everyone else
+
+# class for open channel with client
 class ClientChannel(Channel):
+    # workaround so that channel is aware of host and its client's address
     def setExtra(self, host, addr):
         self.host = host
         self.addr = addr
- 
+
     def Network_joinGame(self, message):
-        print "Message received..."
-        join_msg = Messaging.createMessage(Messaging.JOIN_GAME, self.addr)
+        ticks = pygame.time.get_ticks()
+
+        # acknowledge message, send back new client's id and time offset
+        player_time = message[Messaging.TIMESTAMP_TAG]
+        offset = ticks - player_time
+        join_msg = Messaging.createMessage(Messaging.JOIN_GAME, offset, self.addr)
         self.Send(join_msg)
 
-        # add new player to game state
-        cell, direction = self.host.game_state.getEmptyInitialPosition()
-        self.host.game_state.addSnake(self.addr, cell, direction)
-        state_msg = Messaging.createMessage(Messaging.GAME_STATE,
-            self.host.game_state.stringify())
+        # add new player to game state, and send full state to client
+        encoded_state = self.host.encodeState()
+        state_msg = Messaging.createMessage(Messaging.GAME_STATE, ticks, encoded_state)
         self.Send(state_msg)
 
         # send new snakes to everyone
-        new_snake = {"addr": self.addr, "cell": cell, "direction": direction}
-        new_snake_msg = Messaging.createMessage(Messaging.NEW_SNAKE, new_snake)
-        for client in self.host.clients.values():
-            if client.addr != self.addr:
-                client.Send(new_snake_msg)
+        name = self.host.generateName()
+        cell, direction = self.host.addPlayer(ticks, self.addr, name)
+        self.host.sendSnake(ticks, self.addr, name, cell, direction)
 
     def Network_input(self, message):
-        # key pressed is at data tag
-        self.host.game_state.addKeyPressed(self.addr, message[Messaging.DATA_TAG])
-        self.host.sendKeypress(self.addr, message[Messaging.DATA_TAG])
-        self.host.game_state.addKeyPressed(self.addr, message[Messaging.DATA_TAG])
+        # receive, update own game state first
+        timestamp = message[Messaging.TIMESTAMP_TAG]
+        data = message[Messaging.DATA_TAG]
+        self.host.addRotate(timestamp, data["addr"], data["pressed"])
+        # broadcast input to everyone
+        self.host.broadcast(message, [self.addr]) # dont send back to self
 
-    # todo: send to EVERYONE, not just one person
-    def sendNewSnake(self, addr):
-        snake_msg = Messaging.createMessage(Messaging.NEW_SNAKE, addr)
-        self.Send(snake_msg)
+    def Network_moveSnake(self, message):
+        # receive, update self first
+        timestamp = message[Messaging.TIMESTAMP_TAG]
+        addr = message[Messaging.DATA_TAG]
+        self.host.addMove(timestamp, addr)
+        # broadcast move to everyone
+        self.host.broadcast(message, [self.addr]) # dont send back to self
 
-class Host(Server, FoodHandler):
+    def Network_removeSnake(self, message):
+        timestamp = message[Messaging.TIMESTAMP_TAG]
+        self.host.broadcast(message, [self.addr])
+        self.host.addEvent(self.addr, timestamp, Messaging.REMOVE_SNAKE, None)
+        self.host.closeChannel(self.addr)
+
+    def Network_disconnected(self, message):
+        ticks = pygame.time.get_ticks()
+        rm_msg = Messaging.createMessage(Messaging.REMOVE_SNAKE, ticks, self.addr)
+        Network_removeSnake(rm_msg)
+
+class Host(Server):
     def __init__(self, ip, port):
-        print "Initializing host...\n"
-        # initialize super vars
-        # inits address and game state in player
-        self.addr = (ip, port)
-        self.game_state = GameState.GameState()
-        # inits server with local address
-        Server.__init__(self, channelClass=ClientChannel, localaddr=(ip, port))
-        FoodHandler.__init__(self)
+        # initialize state information for host
+        self.game_state = GameState()
+        self.events = EventQueueHandler(self.game_state)
+        self.xaddr = ip, port # external address
+        self.events.newQueue(self.xaddr) # for self
+        self.clients = {} # for open channels
+        self.seen = 0 # number of snakes every connected to host
+        # initialize super, must used localhost
+        Server.__init__(self, channelClass=ClientChannel, localaddr=self.xaddr)
 
-        # set up dict to store open channels
-        self.clients = {}
+    def getID(self):
+        return self.xaddr
 
-        self.running = False
-
+    ##### server/network methods
+    # when new connection established
     def Connected(self, channel, addr):
-        print addr
-        if addr not in self.channels:
+        if addr not in self.clients:
             channel.setExtra(self, addr)
             self.clients[addr] = channel
 
-    def sendKeypress(self, addr, keypress):
-        data = {"addr" : addr, "key_pressed": keypress}
-        msg = Messaging.createMessage(Messaging.INPUT, data)
-        for client in self.clients.values():
-            client.Send(msg)
+    # sends a mesage to ALL clients; can exclude some
+    def broadcast(self, message, exclude=[]):
+        for addr, channel in self.clients.items():
+            if addr not in exclude:
+                channel.Send(message)
 
-    def sendNewFood(self, food_cell):
-        food_msg = Messaging.createMessage(Messaging.NEW_FOOD, \
-            food_cell)
-        for client in self.clients.values():
-            client.Send(food_msg)
+    def closeChannel(self, addr):
+        self.clients[addr].close()
+        del self.clients[addr]
 
-    def updateSnakes(self):
-        self.game_state.updateSnakes()
+    # broadcast blank msgs to keep queues moving for everyone
+    def sendBlanks(self):
+        ticks = pygame.time.get_ticks()
+        blank_msg = Messaging.createMessage(Messaging.BLANK, ticks, self.xaddr)
+        self.broadcast(blank_msg)
+        self.events.addEvent(self.xaddr, ticks, Messaging.BLANK, None)
 
-    def updateFood(self):
-        snakes = self.game_state.getSnakes()
-        foods = self.game_state.getFoods()
-        food_cell = self.createFood(snakes, foods, len(foods))
-        if food_cell != None:
-            self.sendNewFood(food_cell)
+    def sendSnake(self, timestamp, addr, name, cell, direction):
+        new_snake = {"addr": addr, "name": name, "cell": cell, 
+                     "direction": direction}
+        new_snake_msg = Messaging.createMessage(Messaging.NEW_SNAKE, timestamp, new_snake)
+        self.broadcast(new_snake_msg)
+
+    def shutdown(self):
+        for chnl in self.clients.values():
+            chnl.close()
+        self.close()
 
     def updateConnection(self):
         self.Pump()
 
+    ##### state methods
+    def encodeState(self):
+        encoded_game = self.game_state.encode()
+        encoded_qs = self.events.encode()
+        return encoded_game, encoded_qs
+
+    def generateName(self):
+        name = "s" + str(self.seen)
+        self.seen += 1
+        return name
+
+    def makeFood(self):
+        ticks = pygame.time.get_ticks()
+        fcell = self.game_state.makeFoodCell() # does not make actual food
+        if not fcell: # no fcell, none generated
+            return
+        food_data = {"addr": self.xaddr, "fcell": fcell}
+        food_msg = Messaging.createMessage(Messaging.NEW_FOOD, ticks, food_data)
+        self.broadcast(food_msg)
+        self.events.addEvent(self.xaddr, ticks, Messaging.NEW_FOOD, fcell)
+
+    def addPlayer(self, timestamp, player_id, name):
+        # initialize new queue for player
+        self.events.newQueue(player_id)
+
+        # add snake creation to queue
+        pos = self.game_state.getEmptyInitialPosition()
+        self.events.addEvent(player_id, timestamp, Messaging.NEW_SNAKE, (name, pos))
+
+        return pos
+
+    def addMove(self, timestamp, player_id):
+        self.events.addEvent(player_id, timestamp, Messaging.MOVE_SNAKE, None)
+
+    def addRotate(self, timestamp, player_id, pressed):
+        self.events.addEvent(player_id, timestamp, Messaging.INPUT, pressed)
+
+    def addEvent(self, player_id, timestamp, ty, action):
+        self.events.addEvent(player_id, timestamp, ty, action)
+
+    def updateEvents(self):
+        try:
+            self.events.execute()
+        except UnsyncedQueue:
+            pass # todo: implement more robust behavior
+        except DeadSnake as err:
+            ticks = pygame.time.get_ticks()
+            snake_id = err.args[0]
+            name = err.args[1]
+            pos = (cell, direction) = self.game_state.getEmptyInitialPosition()
+            self.sendSnake(ticks, snake_id, name, cell, direction)
+            self.events.addEvent(snake_id, ticks, Messaging.NEW_SNAKE, (name, pos))
+
+    def blit(self, screen): #temp
+        for food in self.game_state.foods:
+            food.blit(screen)
+
 if __name__ == "__main__":
     host = Host("localhost", 9999)
     while True:
-        host.update()
-
+        host.updateConnection()

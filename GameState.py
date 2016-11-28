@@ -1,107 +1,161 @@
-import json
-import jsonpickle
-from Snake import Snake
-from Food import Food
-from constants import *
 import random
+from copy import deepcopy
+from Messaging import *
+from Board import *
+from Food import *
+from Snake import *
 
-class CollisionException(Exception):
-        pass
+class CollisionFound(Exception):
+    pass
+
+class DeadSnake(Exception):
+    pass
 
 class GameState(object):
-    CELL_LEN = 10
+    MAX_FOODS = 10
 
-    def __init__(self, keys_pressed={}, json="", id_snakes={}, foods=[], 
-        dim=(500, 500)):
-        # initialize foodhandler, default maxfoods = 10
-        super(GameState, self).__init__()
-
-        if json:
-            src = jsonpickle.decode(json, keys=True)
-            self.keys_pressed = src.keys_pressed
-            self.id_snakes = src.id_snakes
-            self.foods = src.foods
-            self.dim = src.dim
+    def __init__(self, src=None, board=None, id_snakes=None, foods=None):
+        if src:
+            self.decode(src)
         else:
-            self.keys_pressed = keys_pressed
-            self.id_snakes = id_snakes
-            self.foods = foods # overrides food handlers if necessary
-            self.dim = dim
+            self.board = deepcopy(board) if board else Board()
+            self.id_snakes = id_snakes.copy() if id_snakes else {}
+            self.foods = foods.copy() if foods else {}
 
-    def stringify(self): 
-        return jsonpickle.encode(self, keys=True)
+    # for network export
+    def encode(self):
+        board = self.board.encode()
+        snakes = {sid: s.encode() for sid, s in self.id_snakes.items()}
+        return {"board": board, "snakes": snakes, "foods": self.foods.keys()}
 
+    def decode(self, encoded):
+        self.board = Board(src=encoded["board"])
+        self.id_snakes = {sid: Snake(src=s) for sid, s in encoded["snakes"].items()}
+        self.foods = {fcell: Food(fcell) for fcell in encoded["foods"]}
+
+    ##### food methods
+    def makeFoodCell(self):
+        empties = self.board.getEmpties()
+        if len(self.foods) < GameState.MAX_FOODS:
+            fcell = empties[random.randint(0, len(empties) - 1)]
+            return fcell
+        else: # no empties OR max number already reached
+            return None
+
+    def addFood(self, fcell):
+        self.foods[fcell] = Food(fcell)
+        self.board.at(fcell, Board.FOOD_CELL)
+
+    def removeFood(self, fcell, replace=None):
+        del self.foods[fcell]
+        if replace:
+            self.board.at(fcell, replace)
+
+    ##### snake methods
     def getSnakes(self):
         return self.id_snakes.values()
 
-    def getFoods(self):
-        return self.foods
-
-    def addSnake(self, snake_id, cell, direction):
-        self.id_snakes[snake_id] = Snake(cell=cell, direction=direction)
+    def addSnake(self, snake_id, name, cell, direction):
+        # add record of snake
+        new_snake = Snake(cell=cell, direction=direction, name=name)
+        self.id_snakes[snake_id] = new_snake
+        # add snake to board
+        if new_snake.isVulnerable():
+            for c in new_snake.getCells():
+                self.board.at(c, snake_id)
 
     def removeSnake(self, snake_id):
+        if snake_id not in self.id_snakes:
+            return
+        snake = self.id_snakes[snake_id]
+        # remove all cells on board, then delete
+        for c in snake.getCells():
+            self.board.at(c, Board.EMPTY_CELL)
         del self.id_snakes[snake_id]
 
-    def addFood(self, food_cell):
-        self.foods.append(Food(food_cell))
+    def respawnSnake(self, snake_id, cell, direction):
+        self.id_snakes[snake_id].respawn(cell, direction)
 
-    def eatFoods(self):
-        for snake in self.id_snakes.values():
-            for food in self.foods:
-                if snake.collidesWith((food.grid_x, food.grid_y)):
-                    self.foods.remove(food)
-                    snake.increaseLength()
+    def moveSnake(self, snake_id):
+        snake = self.id_snakes[snake_id]
+        if snake.isDead(): # dont move if dead
+            return
 
-    # gets a random position
+        initial_last = lcol, lrow = snake.getLast()
+        snake.move()
+        if not snake.isVulnerable(): # if not vulnerable, dont add to board yet
+            return
+
+        # check for collision, no need to move all snakes since timestamped
+        hcell = snake.getHead()
+        if self.board.isCellEmpty(hcell):
+            pass
+        elif self.board.at(hcell) == Board.FOOD_CELL:
+            snake.grow()
+            self.removeFood(hcell)
+        else: # a snake's id found
+            snake.die()
+            for c in snake.getCells()[1:] + [initial_last]:
+                self.board.at(c, Board.EMPTY_CELL) # clear out original cells
+            raise DeadSnake(snake_id, snake.getName())
+        
+        # shift snake's position on board
+        for c in snake.getCells():
+            self.board.at(c, snake_id)
+        if initial_last != snake.getLast(): # not true in case of grow
+            self.board.at(initial_last, Board.EMPTY_CELL)
+
+    def rotateSnake(self, snake_id, pressed):
+        snake = self.id_snakes[snake_id]
+        if snake.isDead(): # dont rotate if dead
+            return
+        self.id_snakes[snake_id].rotate(pressed)
+
+    ##### general
+    def hasSnake(self, snake_id):
+        return snake_id in self.id_snakes
+
+    # gets a random position on the board
+    # deterministic - gets a random position from the board
+    # if none work, then none is returned
     def getEmptyInitialPosition(self):
+        # get list of all empty spaces in board, rare operation worth doing
+        empties = self.board.getEmpties()
+        if len(empties) == 0: # no empty positions, board completely filled
+            return None
+
+        # loop: randomly select a space and a direction; if empty return it
         random.seed()
-        is_empty = False
-        while not is_empty: # todo: refactor to be deterministic, otherwise could loop forever
-            # generate initial cell
-            init_col = random.randint(10, (self.dim[0] / CELL_LEN) - 10)
-            init_row = random.randint(10, (self.dim[1] / CELL_LEN) - 10)
-            dir_col = random.randint(-1, +1)
-            dir_row = 0
-            if dir_col == 0:
-                dir_row = random.choice([-1, 1])
+        directions = [(+1, 0), (-1, 0), (0, +1), (0, -1)]
 
-            # check if space for snake is empty
-            col = init_col
-            row = init_row
-            cells = []
-            for i in range(Snake.DEFAULT_LEN): # create positions of new snake
-                cells.append((col, row))
-            try:
-                for k in self.id_snakes:
+        while len(empties) > 0:
+            random.shuffle(directions)
+            hidx = random.randint(0, len(empties) - 1)
+            hcell = empties[hidx]
+            
+            for d in directions:
+                # create cells of new snake
+                cells = Snake.constructBodyCells(hcell, d)
+                cells.insert(0, hcell)
+
+                # test cells for collisions
+                try:
                     for c in cells:
-                        if self.id_snakes[k].collidesWith(c):
-                            raise GameState.CollisionException
-            except GameState.CollisionException:
-                continue # reloop if doesnt work
+                        if c not in empties:
+                            raise CollisionFound
+                except CollisionFound:
+                    continue # try next direction
 
-            return (init_col, init_row), (dir_col, dir_row)
+                # if no collision exception, all cells are empty
+                return hcell, d
 
-    def addKeyPressed(self, snake_id, pressed):
-        self.keys_pressed[snake_id] = pressed
+            empties.pop(hidx) # no valid directions found, invalid cell
 
-    def updateSnakes(self):
-        # move snakes
-        for k in self.id_snakes:
-            pressed = self.keys_pressed[k] if k in self.keys_pressed else None
-            self.id_snakes[k].move(pressed)
-
-        snakes = [self.id_snakes[k] for k in self.id_snakes]
-        # check collisions
-        for k in self.id_snakes:
-            if self.id_snakes[k].collideSnake(snakes):
-                self.id_snakes[k] = None # should kill game, for now
-            # todo: respawn snake
-        # check eat food
-        self.eatFoods()
+        return None # all empties tried, none valid
 
     def blit(self, screen):
-        for f in self.foods:
-            f.blit(screen)
-        for k in self.id_snakes:
-            self.id_snakes[k].blit(screen)
+        for food in self.foods.values():
+            food.blit(screen)
+        for snake in self.id_snakes.values():
+            if not snake.isDead():
+                snake.blit(screen)
