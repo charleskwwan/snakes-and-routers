@@ -100,7 +100,6 @@ class GameWindow(object):
         try:
             if host:
                 hostaddr = host.getID()
-                print hostaddr
             else:
                 ip = self.getInfo(self.width, 70, "Host ip:")
                 port = self.getInfo(self.width, 70, "Host port:")
