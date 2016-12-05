@@ -11,10 +11,12 @@ class Player(ConnectionListener):
     NOT_CONNECTED = 0
     JOINING = 1
     CONNECTED = 2
+    TIMEOUT = 2 * int(FPS * 0.4) # double the blank timer in GameWindow
 
     def __init__(self):
         self.reset()
         self.offset = None # for timing
+        self.last = None # time since last msg received
 
     def reset(self):
         self.status = Player.NOT_CONNECTED
@@ -83,6 +85,7 @@ class Player(ConnectionListener):
         self.Connect(self.hostaddr)
         self.status = Player.JOINING
         self.offset = pygame.time.get_ticks() # store initial time in offset
+        self.last = self.offset # first time, set last to join attempt time
         message = Messaging.createMessage(Messaging.JOIN_GAME, self.offset, "")
         self.Send(message)
 
@@ -157,12 +160,20 @@ class Player(ConnectionListener):
         # close everything
         self.reset()
         connection.close()
+        self.status = Player.NOT_CONNECTED
         if not quit:
             raise EndGame
+
+    # called for any time of message alongside more specific functions
+    def Network(self, message):
+        self.last = pygame.time.get_ticks() # track last msg received time
 
     def updateConnection(self):
         connection.Pump()
         self.Pump()
+        # check timeout
+        if self.last and pygame.time.get_ticks() - self.last > Player.TIMEOUT:
+            self.Network_disconnected({"action": "disconnected"})
 
 if __name__ == "__main__":
     player = Player()

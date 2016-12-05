@@ -25,7 +25,6 @@ class InvalidAddress(Exception):
 
 class GameWindow(object):
     # GameWindow constants
-    FPS = 100
     SCR_BG_COLOR = 255, 255, 255 # white
     # event constants
     FOOD_TIMER = FPS * 25
@@ -34,33 +33,46 @@ class GameWindow(object):
     MOVE_SNAKE = pygame.USEREVENT + 2
     BLANK_TIMER = MOVE_TIMER / 2
     SEND_BLANK = pygame.USEREVENT + 3
+    # addr constants
+    NULL_ADDR = "Invalid"
+    FONT_SIZE = 30
 
     def __init__(self):
         pygame.init() # pygame initialization
 
         # time-based details
         self.time = pygame.time.Clock() # keep track of time
-        self.fps = GameWindow.FPS
+        self.fps = FPS
 
         # screen-based details
-        self.size = self.width, self.height = SCR_WID + BAR_WID, SCR_HGT
+        self.size = self.wid, self.hgt = SCR_WID + BAR_WID, SCR_HGT
         self.screen = pygame.display.set_mode(self.size) # pygame create screen
 
     ##### for menu
+    def blitIp(self, screen, x, y, color, font_size):
+        font = pygame.font.Font(None, font_size)
+        ip_text = font.render("Your IP: " + getOwnIP(), 1, color) # black
+        screen.blit(ip_text, (x, y))
+
     def showMenu(self):
         # fill screen
         self.screen.fill(GameWindow.SCR_BG_COLOR)
         try:
             button("Host!", 250 - 50, 250 - 50, 100, 50, (0, 120, 0), (0, 255, 0), self.screen, self.runHost)
             button("Connect!", 250 - 50, 250 + 50, 100, 50, (0, 120, 0), (0, 255, 0), self.screen, self.runClient)
+            self.blitIp(self.screen, int(self.wid * 0.55), int(self.hgt * 0.95), 
+                        (0, 0, 0), GameWindow.FONT_SIZE)
         except RequestException:
             pass
         pygame.display.update()
 
     ##### for game
+    def toMenu(self): # alternate to lambda for back button option
+        raise RequestException
+
     def getInfo(self, w, h, prompt):
         info = None
-        in_box = InputBox(self.width / 2 - w / 2, self.height / 2 - h / 2, w, h, prompt=prompt)
+        in_box = InputBox(self.wid / 2 - w / 2, self.hgt / 2 - h / 2, w, h, prompt=prompt)
         while not info:
             self.time.tick(self.fps)
             self.screen.fill(GameWindow.SCR_BG_COLOR)
@@ -74,13 +86,17 @@ class GameWindow(object):
 
             in_box.update(events)
             in_box.blit(self.screen)
+            button("Back", int(self.wid * 0.8), int(self.hgt * 0.9), 100,
+                   50, (150, 0, 0), (255, 0, 0), self.screen, self.toMenu) 
             pygame.display.update()
         return info
 
     def runHost(self):
         # ip, port = addGame()
-        hostport = self.getInfo(self.width, 70, "Host port:")
-        if re.match(PORT_REG, hostport):
+        hostport = self.getInfo(self.wid, 70, "Host port:")
+        if hostport == GameWindow.NULL_ADDR:
+            return
+        elif re.match(PORT_REG, hostport):
             hostport = int(hostport)
             try:
                 # host = Host(ip, port)
@@ -101,8 +117,8 @@ class GameWindow(object):
             if host:
                 hostaddr = host.getID()
             else:
-                ip = self.getInfo(self.width, 70, "Host ip:")
-                port = self.getInfo(self.width, 70, "Host port:")
+                ip = self.getInfo(self.wid, 70, "Host ip:")
+                port = self.getInfo(self.wid, 70, "Host port:")
                 if re.match(IP_REG, ip) and re.match(PORT_REG, port):
                     hostaddr = ip, int(port)
                 else:
@@ -119,8 +135,18 @@ class GameWindow(object):
                 if host:
                     host.updateConnection()
                 player.updateConnection()
+
+                # show 'progress'
+                self.screen.fill(GameWindow.SCR_BG_COLOR)
+                font = pygame.font.Font(None, GameWindow.FONT_SIZE)
+                join_text = font.render("Joining...", 1, (0, 0, 0)) # black
+                self.screen.blit(join_text, (int(self.wid * 0.8), 
+                                 int(self.hgt * 0.93)))
+                pygame.display.update()
             except EndGame: # should bypass isConnected anyway
-                break
+                if host:
+                    host.shutdown()
+                return
 
         # set timers
         pygame.time.set_timer(GameWindow.MOVE_SNAKE, GameWindow.MOVE_TIMER)
@@ -134,6 +160,8 @@ class GameWindow(object):
         while player.isConnected:
             self.time.tick(self.fps)
             self.screen.fill(GameWindow.SCR_BG_COLOR)
+
+            print "FPS:", self.time.get_fps()
 
             # check for connection changes
             try:
@@ -157,7 +185,7 @@ class GameWindow(object):
                     player.exitGame(quit=True)
                     if host:
                         host.shutdown()
-                        removeGame(host.getID())
+                        # removeGame(host.getID())
                     exit()
                 elif event.type == GameWindow.CREATE_FOOD:
                     host.makeFood()
