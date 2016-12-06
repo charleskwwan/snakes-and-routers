@@ -1,4 +1,4 @@
-from heapq import *
+from HeapWrap import *
 from GameState import *
 from Messaging import *
 
@@ -8,33 +8,19 @@ class DeadQueue(Exception):
 # event repreentation: 
 #   - (timestamp, type, values)
 #   - e.g. (3424, "input", pygame.K_UP)
-class EventQueue(object):
+class EventQueue(Heap):
     def __init__(self, game_state, queue_id=None, q=[]):
         self.game_state = game_state # for pushing events to
         self.queue_id = queue_id # optional, for non-hosts
-        self.q = q[:]
-        heapify(self.q)
+        Heap.__init__(self, q, key=lambda e: e[0]) # use timestamp as key
 
     def toList(self):
-        return self.q
-
-    def empty(self):
-        return len(self.q) == 0
-
-    def put(self, event):
-        heappush(self.q, event)
-
-    def get(self):
-        return heappop(self.q)
-
-    # look at the first element of the queue, but does not remove it
-    def peek(self):
-        return self.q[0] # will raise IndexError if empty
+        return self.getItems()
 
     # executes the highest priority event, pushing it to the game state
     # input/moveSnake should only be executed by clients - have queue_ids
     def execute(self):
-        timestamp, ty, action  = self.get() # raises Empty if nothing in queue
+        timestamp, ty, action  = self.pop() # raises Empty if nothing in queue
         if ty == Messaging.NEW_SNAKE: # action: name, (cell, direction)
             name, (cell, direction) = action
             if self.game_state.hasSnake(self.queue_id):

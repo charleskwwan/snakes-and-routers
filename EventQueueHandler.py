@@ -36,7 +36,7 @@ class EventQueueHandler(object):
 
     def addEvent(self, queue_id, timestamp, ty, action):
         q = self.qs[queue_id]
-        q.put((timestamp, ty, action))
+        q.push((timestamp, ty, action))
 
     # executes the earliest events available
     # for execution to happen, every queue must not be empty, so that the

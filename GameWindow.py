@@ -15,9 +15,12 @@ PORT_REG = r"[0-9][0-9]?[0-9]?[0-9]?[0-9]?"
 
 def getOwnIP():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 53))
-    ip = s.getsockname()[0]
-    s.close()
+    try:
+        s.connect(("8.8.8.8", 53))
+        ip = s.getsockname()[0]
+        s.close()
+    except socket.error:
+        ip = GameWindow.NO_ADDR
     return ip
 
 class InvalidAddress(Exception):
@@ -35,6 +38,7 @@ class GameWindow(object):
     SEND_BLANK = pygame.USEREVENT + 3
     # addr constants
     NULL_ADDR = "Invalid"
+    NO_ADDR = "Cannot determine"
     FONT_SIZE = 30
 
     def __init__(self):
@@ -60,7 +64,7 @@ class GameWindow(object):
         try:
             button("Host!", 250 - 50, 250 - 50, 100, 50, (0, 120, 0), (0, 255, 0), self.screen, self.runHost)
             button("Connect!", 250 - 50, 250 + 50, 100, 50, (0, 120, 0), (0, 255, 0), self.screen, self.runClient)
-            self.blitIp(self.screen, int(self.wid * 0.55), int(self.hgt * 0.95), 
+            self.blitIp(self.screen, int(self.wid * 0.05), int(self.hgt * 0.95), 
                         (0, 0, 0), GameWindow.FONT_SIZE)
         except RequestException:
             pass
@@ -93,14 +97,17 @@ class GameWindow(object):
 
     def runHost(self):
         # ip, port = addGame()
+        # get ip - if cannot determine, manual input; also get port
+        hostip = getOwnIP()
+        if hostip == GameWindow.NO_ADDR:
+            hostip = self.getInfo(self.wid, 70, "Host ip:")
         hostport = self.getInfo(self.wid, 70, "Host port:")
-        if hostport == GameWindow.NULL_ADDR:
-            return
-        elif re.match(PORT_REG, hostport):
+        # verify before connect
+        if re.match(IP_REG, hostip) and re.match(PORT_REG, hostport):
             hostport = int(hostport)
             try:
                 # host = Host(ip, port)
-                host = Host(getOwnIP(), hostport)
+                host = Host(hostip, hostport)
             except socket.error:
                 # removeGame((ip, port))
                 return
