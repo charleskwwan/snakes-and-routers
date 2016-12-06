@@ -168,7 +168,7 @@ class GameWindow(object):
             self.time.tick(self.fps)
             self.screen.fill(GameWindow.SCR_BG_COLOR)
 
-            print "FPS:", self.time.get_fps()
+            # print "FPS:", self.time.get_fps()
 
             # check for connection changes
             try:

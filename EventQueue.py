@@ -15,7 +15,8 @@ class EventQueue(Heap):
         Heap.__init__(self, q, key=lambda e: e[0]) # use timestamp as key
 
     def toList(self):
-        return self.getItems()
+        items = [e[1] for e in self.getItems()]
+        return items
 
     # executes the highest priority event, pushing it to the game state
     # input/moveSnake should only be executed by clients - have queue_ids
