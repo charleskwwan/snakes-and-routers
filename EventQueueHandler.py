@@ -1,4 +1,5 @@
 from EventQueue import *
+from HeapWrap import *
 
 # to be raised when an event queue has no events available
 # to execute any event, every queue must have at least one available
@@ -9,12 +10,25 @@ class UnsyncedQueue(Exception):
 class NoQueues(Exception):
     pass
 
+def q_key(q):
+    try:
+        return q.peek()[0]
+    except:
+        print "empty queue!"
+        return float("inf")
 class EventQueueHandler(object):
     def __init__(self, game_state, src=None):
         self.game_state = game_state
         if src:
             self.decode(src)
+            print "this many queues"
+            print len(self.qs.values())
+            self.pq = Heap(self.qs.values(), q_key)
+            print "***"
+            print self.pq._data
+
         else:
+            self.pq = Heap(key=q_key)
             self.qs = {}
 
     # for network export
@@ -29,6 +43,7 @@ class EventQueueHandler(object):
         self.qs[queue_id] = EventQueue(self.game_state, queue_id)
 
     def deleteQueue(self, queue_id):
+        self.pq.remove(self.qs[queue_id])
         del self.qs[queue_id]
 
     def hasQueue(self, queue_id):
@@ -36,12 +51,32 @@ class EventQueueHandler(object):
 
     def addEvent(self, queue_id, timestamp, ty, action):
         q = self.qs[queue_id]
-        q.push((timestamp, ty, action))
+        if q.empty:
+            q.push((timestamp, ty, action))
+            self.pq.push(q)
+        else: 
+            q.push((timestamp, ty, action))
+
 
     # executes the earliest events available
     # for execution to happen, every queue must not be empty, so that the
     #   handler can tell if everyone is synced or not
     def execute(self):
+        if len(self.qs) == 0:
+            raise NoQueues
+        q = self.pq.peek()
+
+        while len(q) > 1:
+            try:
+                q.execute()
+            except DeadQueue as err:
+                queue_id = err.args[0]
+                self.deleteQueue(queue_id)
+            self.pq.pop()
+            self.pq.push(q)
+            q = self.pq.peek()
+            
+        """
         if len(self.qs) == 0:
             raise NoQueues
         # get global virtual time - earliest time on any queues
@@ -61,3 +96,4 @@ class EventQueueHandler(object):
             except DeadQueue as err:
                 queue_id = err.args[0]
                 self.deleteQueue(queue_id)
+        """

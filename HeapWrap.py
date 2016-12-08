@@ -26,5 +26,7 @@ class Heap(object):
         return self._data[0][1]
 
     def remove(self, item):
-        self._data.remove((key(item), item))
+        self._data.remove((self.key(item), item))
         heapify(self._data) # reorganize necessary
+    def __len__(self):
+        return len(self._data)
