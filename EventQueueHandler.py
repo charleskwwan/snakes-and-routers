@@ -12,52 +12,78 @@ class NoQueues(Exception):
 class EventQueueHandler(object):
     def __init__(self, game_state, src=None):
         self.game_state = game_state
-        if src:
+        if src: 
             self.decode(src)
         else:
-            self.qs = {}
+            self.qcounts = {}
+            self.events = Heap(key=lambda e: e[0])
 
-    # for network export
     def encode(self):
-        qlists = [q.toList() for q in self.qs.values()]
-        return dict(zip(self.qs.keys(), qlists))
+        return {"qcounts": self.qcounts, "events": self.events.getItems()}
 
-    def decode(self, encoded):
-        self.qs = {qid: EventQueue(self.game_state, qid, q) for qid, q in encoded.items()}
+    def decode(self, src):
+        self.qcounts = src["qcounts"]
+        self.events = Heap(src=src["events"], key=lambda e: e[0])
 
-    def newQueue(self, queue_id): # queue_id = snake_id
-        self.qs[queue_id] = EventQueue(self.game_state, queue_id)
+    def newQueue(self, queue_id):
+        self.qcounts[queue_id] = 0
 
     def deleteQueue(self, queue_id):
-        del self.qs[queue_id]
+        if queue_id in self.qcounts:
+            del self.qcounts[queue_id] 
+        # let execute take care of deletion in self events
 
     def hasQueue(self, queue_id):
-        return queue_id in self.qs
+        return queue_id in self.qcounts
 
     def addEvent(self, queue_id, timestamp, ty, action):
-        q = self.qs[queue_id]
-        q.push((timestamp, ty, action))
+        self.qcounts[queue_id] += 1
+        self.events.push((timestamp, ty, action, queue_id))
 
-    # executes the earliest events available
-    # for execution to happen, every queue must not be empty, so that the
-    #   handler can tell if everyone is synced or not
+    def process(self, queue_id, (timestamp, ty, action)):
+        if ty == Messaging.NEW_SNAKE: # action: name, (cell, direction)
+            name, (cell, direction) = action
+            if self.game_state.hasSnake(queue_id):
+                self.game_state.respawnSnake(queue_id, cell, direction)
+            else:
+                self.game_state.addSnake(queue_id, name, cell, direction)
+        elif ty == Messaging.REMOVE_SNAKE: # action: none
+            self.game_state.removeSnake(queue_id)
+            raise DeadQueue(queue_id)
+        elif ty == Messaging.INPUT: # action: key pressed
+            self.game_state.rotateSnake(queue_id, action)
+        elif ty == Messaging.MOVE_SNAKE:
+            self.game_state.moveSnake(queue_id)
+        elif ty == Messaging.NEW_FOOD: # action = fcell
+            self.game_state.addFood(action)
+        elif ty == Messaging.BLANK: # maintain connection, do nothing
+            pass
+
     def execute(self):
-        if len(self.qs) == 0:
+        if len(self.qcounts) == 0:
             raise NoQueues
-        # get global virtual time - earliest time on any queues
-        gvt = None
-        for q in self.qs.values():
-            try:
-                timestamp, ty, action = q.peek()
-                gvt = timestamp if gvt == None else min(gvt, timestamp)
-            except IndexError: # at least one queue does not have an event
+
+        for c in self.qcounts.values():
+            if c <= 0:
                 raise UnsyncedQueue
 
-        # get all queues which should execute now based on gvt, and execute
-        gvt_qs = [q for q in self.qs.values() if q.peek()[0] == gvt]
-        for q in gvt_qs:
+        # delete events that are not part of any queue
+        while self.events.peek()[3] not in self.qcounts:
+            self.events.pop()
+
+        # get all evetns with the same gvt
+        gvt = None
+        nxts = []
+        while not self.events.empty() and (not gvt or self.events.peek()[0] == gvt):
+            timestamp, ty, action, queue_id = self.events.pop()
+            if not gvt:
+                gvt = timestamp
+            nxts.append((queue_id, (timestamp, ty, action)))
+
+        # process all
+        for qid, event in nxts:
             try:
-                q.execute()
+                self.process(qid, event)
+                self.qcounts[qid] -= 1
             except DeadQueue as err:
-                queue_id = err.args[0]
-                self.deleteQueue(queue_id)
+                self.deleteQueue(qid)
