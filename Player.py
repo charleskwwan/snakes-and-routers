@@ -11,7 +11,7 @@ class Player(ConnectionListener):
     NOT_CONNECTED = 0
     JOINING = 1
     CONNECTED = 2
-    TIMEOUT = 2 * int(FPS * 0.4) # double the blank timer in GameWindow
+    TIMEOUT = 5 * int(FPS * 0.4) # double the blank timer in GameWindow
 
     def __init__(self):
         self.reset()
