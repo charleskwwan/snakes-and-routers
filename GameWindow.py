@@ -3,7 +3,6 @@ import socket
 import random
 import re
 from Constants import *
-from TrackerHandler import *
 from button import *
 from Player import *
 from Host import *
@@ -32,7 +31,7 @@ class GameWindow(object):
     # event constants
     FOOD_TIMER = FPS * 25
     CREATE_FOOD = pygame.USEREVENT + 1
-    MOVE_TIMER = int(FPS * 0.80)
+    MOVE_TIMER = CLI_TIMEOUT / 2
     MOVE_SNAKE = pygame.USEREVENT + 2
     BLANK_TIMER = MOVE_TIMER / 2
     SEND_BLANK = pygame.USEREVENT + 3

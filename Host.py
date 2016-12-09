@@ -1,9 +1,13 @@
 import PodSixNet
 from PodSixNet.Channel import Channel
 from PodSixNet.Server import Server
+from Constants import *
 from Messaging import *
 from GameState import *
 from EventQueueHandler import *
+
+class ChannelTimeout(ConnectionException): # ConnectionException from Messaging
+    pass
 
 # timestamps for clients and host:
 #   - clients send only ticks to host
@@ -62,20 +66,30 @@ class ClientChannel(Channel):
         rm_msg = Messaging.createMessage(Messaging.REMOVE_SNAKE, ticks, self.addr)
         Network_removeSnake(rm_msg)
 
+    def Network(self, message):
+        self.host.setLast(self.addr)
+
 class Host(Server):
+    TIMEOUT = CLI_TIMEOUT
+
     def __init__(self, ip, port):
         # initialize state information for host
+        # network stuff
+        self.addr = ip, port # external address
+        self.clients = {} # for open channels
+        self.lasts = {} # last time msg received for channel
+
+        # game state stuff
         self.game_state = GameState()
         self.events = EventQueueHandler(self.game_state)
-        self.xaddr = ip, port # external address
-        self.events.newQueue(self.xaddr) # for self
-        self.clients = {} # for open channels
+        self.events.newQueue(self.addr) # for self
         self.seen = 0 # number of snakes every connected to host
+
         # initialize super, must used localhost
-        Server.__init__(self, channelClass=ClientChannel, localaddr=self.xaddr)
+        Server.__init__(self, channelClass=ClientChannel, localaddr=self.addr)
 
     def getID(self):
-        return self.xaddr
+        return self.addr
 
     ##### server/network methods
     # when new connection established
@@ -83,6 +97,7 @@ class Host(Server):
         if addr not in self.clients:
             channel.setExtra(self, addr)
             self.clients[addr] = channel
+            self.lasts[addr] = None
 
     # sends a mesage to ALL clients; can exclude some
     def broadcast(self, message, exclude=[]):
@@ -90,16 +105,21 @@ class Host(Server):
             if addr not in exclude:
                 channel.Send(message)
 
+    # sets the last time value for a msg received
+    def setLast(self, addr, last=pygame.time.get_ticks()):
+        self.lasts[addr] = last
+
     def closeChannel(self, addr):
         self.clients[addr].close()
         del self.clients[addr]
+        del self.lasts[addr]
 
     # broadcast blank msgs to keep queues moving for everyone
     def sendBlanks(self):
         ticks = pygame.time.get_ticks()
-        blank_msg = Messaging.createMessage(Messaging.BLANK, ticks, self.xaddr)
+        blank_msg = Messaging.createMessage(Messaging.BLANK, ticks, self.addr)
         self.broadcast(blank_msg)
-        self.events.addEvent(self.xaddr, ticks, Messaging.BLANK, None)
+        self.events.addEvent(self.addr, ticks, Messaging.BLANK, None)
 
     def sendSnake(self, timestamp, addr, name, cell, direction):
         new_snake = {"addr": addr, "name": name, "cell": cell, 
@@ -114,6 +134,15 @@ class Host(Server):
 
     def updateConnection(self):
         self.Pump()
+        # check current time against lasts; if any are late, raise
+        # ChannelTimeout with all waiting channel addrs
+        ticks = pygame.time.get_ticks()
+        lates = [] # late channel addrs
+        for addr, last in self.lasts.items():
+            if last and ticks - last >= Host.TIMEOUT:
+                lates.append(addr)
+        if lates:
+            raise ChannelTimeout(lates)
 
     ##### state methods
     def encodeState(self):
@@ -131,10 +160,10 @@ class Host(Server):
         fcell = self.game_state.makeFoodCell() # does not make actual food
         if not fcell: # no fcell, none generated
             return
-        food_data = {"addr": self.xaddr, "fcell": fcell}
+        food_data = {"addr": self.addr, "fcell": fcell}
         food_msg = Messaging.createMessage(Messaging.NEW_FOOD, ticks, food_data)
         self.broadcast(food_msg)
-        self.events.addEvent(self.xaddr, ticks, Messaging.NEW_FOOD, fcell)
+        self.events.addEvent(self.addr, ticks, Messaging.NEW_FOOD, fcell)
 
     def addPlayer(self, timestamp, player_id, name):
         # initialize new queue for player
