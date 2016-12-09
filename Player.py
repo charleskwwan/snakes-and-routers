@@ -98,7 +98,7 @@ class Player(ConnectionListener):
         ticks = pygame.time.get_ticks() + self.offset
         message = Messaging.createMessage(Messaging.REMOVE_SNAKE, ticks, self.addr)
         self.Send(message)
-        self.updateConnection() # ensure send
+        self.Pump() # ensure send
         self.Network_disconnected({"action": "disconnected"}, quit)
 
     def Network_joinGame(self, message):
@@ -177,7 +177,10 @@ class Player(ConnectionListener):
         connection.Pump()
         self.Pump()
         # check timeout
-        if self.last and pygame.time.get_ticks() - self.last > Player.TIMEOUT:
+        ticks = pygame.time.get_ticks()
+        if self.last and ticks - self.last > Player.TIMEOUT * 30:
+            self.Network_disconnected({"action": "disconnected"})
+        elif self.last and ticks - self.last > Player.TIMEOUT:
             raise ServerTimeout
 
 if __name__ == "__main__":

@@ -33,7 +33,7 @@ class GameWindow(object):
     # GameWindow constants
     SCR_BG_COLOR = 255, 255, 255 # white
     # event constants
-    FOOD_TIMER = FPS * 25
+    FOOD_TIMER = FPS * 15
     CREATE_FOOD = pygame.USEREVENT + 1
     MOVE_TIMER = CLI_TIMEOUT / 2
     MOVE_SNAKE = pygame.USEREVENT + 2
@@ -58,7 +58,7 @@ class GameWindow(object):
     ##### for menu
     def blitIp(self, screen, x, y, color, font_size):
         font = pygame.font.Font(None, font_size)
-        ip_text = font.render("Your IP: " + getOwnIP(), 1, color) # black
+        ip_text = font.render("Your Public IP: " + getOwnIP(), 1, color) # black
         screen.blit(ip_text, (x, y))
 
     def showMenu(self):
@@ -67,7 +67,7 @@ class GameWindow(object):
         try:
             button("Host!", 250 - 50, 250 - 50, 100, 50, (0, 120, 0), (0, 255, 0), self.screen, self.runHost)
             button("Connect!", 250 - 50, 250 + 50, 100, 50, (0, 120, 0), (0, 255, 0), self.screen, self.runClient)
-            self.blitIp(self.screen, int(self.wid * 0.05), int(self.hgt * 0.95), 
+            self.blitIp(self.screen, int(self.wid * 0.01), int(self.hgt * 0.95), 
                         (0, 0, 0), GameWindow.FONT_SIZE)
         except toMenu:
             pass
@@ -115,6 +115,7 @@ class GameWindow(object):
         if re.match(IP_REG, hostip) and re.match(PORT_REG, hostport):
             hostport = int(hostport)
             try:
+                hostip = "192.168.56.1"
                 host = Host(hostip, hostport)
             except socket.error:
                 return
@@ -230,9 +231,13 @@ class GameWindow(object):
                     f = lambda: self.dropPlayers(host, err.args[0])
                 elif type(err) == ServerTimeout:
                     dtxt = "Reconnecting to server..."
-                    f = player.exitGame()
-                dbox = DialogBox(0, 0, self.wid / 3, self.hgt /4, dtxt, "Drop", f)
-                dbox.blit(self.screen)
+                    f = player.exitGame
+                try:
+                    dbox = DialogBox(self.wid / 3, int(self.hgt * 0.375), 
+                                     self.wid / 3, self.hgt /4, dtxt, "Drop", f)
+                    dbox.blit(self.screen)
+                except EndGame:
+                    break
 
             pygame.display.update()
 

@@ -227,8 +227,6 @@ class Host(Server):
         self.events.addEvent(player_id, timestamp, ty, action)
 
     def updateEvents(self):
-        if self.timeoutState:
-            return
         try:
             self.events.execute()
         except UnsyncedQueue:
