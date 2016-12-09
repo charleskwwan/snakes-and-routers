@@ -166,10 +166,10 @@ class GameWindow(object):
         # create bottom bar
         bar = GameBar(player.exitGame, player.getID(), player.game_state.id_snakes)
 
+
         while player.isConnected:
             self.time.tick(self.fps)
             self.screen.fill(GameWindow.SCR_BG_COLOR)
-
             # print "FPS:", self.time.get_fps()
 
             # check for connection changes
@@ -179,13 +179,24 @@ class GameWindow(object):
                 player.updateConnection()
             except EndGame: # in the event of a disconnect
                 break
+            except HostEndGame:
+                break
+            except ChannelTimeout as err:
+                if not host.timeoutState:
+                    pygame.time.set_timer(GameWindow.MOVE_SNAKE, GameWindow.MOVE_TIMER)
+                    pygame.time.set_timer(GameWindow.SEND_BLANK, GameWindow.BLANK_TIMER)
+                    pygame.time.set_timer(GameWindow.CREATE_FOOD, GameWindow.FOOD_TIMER)
+                    continue
+                pygame.time.set_timer(GameWindow.SEND_BLANK, 0) # disable events
+                pygame.time.set_timer(GameWindow.CREATE_FOOD, 0)
+                pygame.time.set_timer(GameWindow.MOVE_SNAKE, 0)
 
             # handle input
             for event in pygame.event.get([pygame.KEYDOWN]):
                 if event.key != pygame.K_UP and event.key != pygame.K_DOWN and \
                    event.key != pygame.K_LEFT and event.key != pygame.K_RIGHT:
                     continue
-                elif player.isReady():
+                elif player.isReady() and not player.timeoutState:
                     player.sendInput(pygame.time.get_ticks(), event.key)
 
             # handle other events like moving
@@ -203,6 +214,7 @@ class GameWindow(object):
                 elif player.isReady() and event.type == GameWindow.MOVE_SNAKE:
                     player.sendMove(pygame.time.get_ticks())
 
+
             # work on display
             player.updateEvents(self.screen)
             if host:
@@ -212,15 +224,17 @@ class GameWindow(object):
             except EndGame: # could be triggered by quit button click
                 break
             pygame.display.update()
-
+        print "player not connected any mo"
         # cleanup
         if host:
             host.shutdown()
             # removeGame(host.getID())
             pygame.time.set_timer(GameWindow.SEND_BLANK, 0) # disable
             pygame.time.set_timer(GameWindow.CREATE_FOOD, 0)
-        pygame.time.set_timer(GameWindow.MOVE_SNAKE, 0)
-
+            pygame.time.set_timer(GameWindow.MOVE_SNAKE, 0)
+            
+         
+		
 
     ##### for general
     def run(self):

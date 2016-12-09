@@ -20,6 +20,7 @@ class Player(ConnectionListener):
         self.reset()
         self.offset = None # for timing
         self.last = None # time since last msg received
+        self.timeoutState = False
 
     def reset(self):
         self.status = Player.NOT_CONNECTED
@@ -67,8 +68,9 @@ class Player(ConnectionListener):
         self.game_state.blit(screen)
 
     def updateEvents(self, screen):
+
         try:
-            if self.events:
+            if self.events and not self.timeoutState:
                 self.events.execute()
         except UnsyncedQueue:
             pass
@@ -176,7 +178,11 @@ class Player(ConnectionListener):
         self.Pump()
         # check timeout
         if self.last and pygame.time.get_ticks() - self.last > Player.TIMEOUT:
-            self.Network_disconnected({"action": "disconnected"})
+            self.timeoutState = True
+            if self.last and pygame.time.get_ticks() - self.last > Player.TIMEOUT * 100:
+                self.Network_disconnected({"action": "disconnected"})
+        else:
+            self.timeoutState = False
 
 if __name__ == "__main__":
     player = Player()

@@ -9,6 +9,9 @@ from EventQueueHandler import *
 class ChannelTimeout(ConnectionException): # ConnectionException from Messaging
     pass
 
+class HostEndGame(Exception):
+    pass
+
 # timestamps for clients and host:
 #   - clients send only ticks to host
 #   - host sends tick AND priority to everyone else
@@ -78,6 +81,8 @@ class Host(Server):
         self.addr = ip, port # external address
         self.clients = {} # for open channels
         self.lasts = {} # last time msg received for channel
+        self.lates = []
+        self.timeoutState = False
 
         # game state stuff
         self.game_state = GameState()
@@ -111,6 +116,12 @@ class Host(Server):
             last = pygame.time.get_ticks()
         self.lasts[addr] = last
 
+    def broadcastRemSnake(self, addr):
+        timestamp = pygame.time.get_ticks()
+        msg = Messaging.createMessage(Messaging.REMOVE_SNAKE, timestamp, addr)
+        self.addEvent(addr, timestamp, Messaging.REMOVE_SNAKE, None)
+        self.broadcast(msg) 
+
     def closeChannel(self, addr):
         self.clients[addr].close()
         del self.clients[addr]
@@ -138,13 +149,30 @@ class Host(Server):
         self.Pump()
         # check current time against lasts; if any are late, raise
         # ChannelTimeout with all waiting channel addrs
-        print self.lasts
         ticks = pygame.time.get_ticks()
         lates = [] # late channel addrs
+        if self.lates:
+            for addr, last in self.lates:
+                if last and ticks - last >= Host.TIMEOUT * 30:
+                    if len(self.lasts.items()) == 1:
+                        raise HostEndGame
+                    self.closeChannel(addr)
+                    self.broadcastRemSnake(addr)
+                    self.sendBlanks() # send blanks to players to tell them to continue
+                    self.timeoutState = False
+                    for key in self.lasts.keys():
+                        self.lasts[key] = ticks # reset last timestamp for each player
+                    del self.lates
+                    self.lates = []
+                    raise ChannelTimeout(self.lates)
+            return
+        #print self.lasts.items()
+        #print self.lates:
         for addr, last in self.lasts.items():
             if last and ticks - last >= Host.TIMEOUT:
-                lates.append(addr)
-        if lates:
+                self.lates.append((addr, last)) 
+        if self.lates:
+            self.timeoutState = True
             raise ChannelTimeout(lates)
 
     ##### state methods
@@ -188,6 +216,8 @@ class Host(Server):
         self.events.addEvent(player_id, timestamp, ty, action)
 
     def updateEvents(self):
+        if self.timeoutState:
+            return
         try:
             self.events.execute()
         except UnsyncedQueue:
