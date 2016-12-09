@@ -117,6 +117,21 @@ class Host(Server):
         del self.clients[addr]
         del self.lasts[addr]
 
+    # removes a player from the server
+    def dropPlayer(self, addr):
+        self.closeChannel(addr)
+        self.sendRemoves(addr)
+        if addr in self.lates:
+            self.lates.remove(addr)
+
+    # pushes all clients up to the current time
+    def resetLasts(self, ticks=None):
+        if not ticks:
+            ticks = pygame.time.get_ticks()
+        for addr in self.lasts:
+            self.lasts[addr] = ticks
+        self.sendBlanks()
+
     # broadcast blank msgs to keep queues moving for everyone
     def sendBlanks(self):
         ticks = pygame.time.get_ticks()
@@ -151,16 +166,12 @@ class Host(Server):
             for addr in self.lates:
                 last = self.lasts[addr]
                 if last and ticks - last >= Host.TIMEOUT * 30: # done waiting
-                    self.closeChannel(addr)
-                    self.sendRemoves(addr)
-                    self.lates.remove(addr) # no longer waiting on it
+                    self.dropPlayer(addr)
             if not self.lates: # if no longer waiting
                 # move all remaining lasts up to prevent false timeouts
-                for addr in self.lasts:
-                    self.lasts[addr] = ticks
-                self.sendBlanks() # update all remain host is back
+                self.resetLasts(ticks)
         else: # check if there are any lates
-            for addr, last in self.lasts :
+            for addr, last in self.lasts.items():
                 if last and ticks - last >= Host.TIMEOUT:
                     self.lates.append(addr)
         
