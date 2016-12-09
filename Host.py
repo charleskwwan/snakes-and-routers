@@ -106,7 +106,9 @@ class Host(Server):
                 channel.Send(message)
 
     # sets the last time value for a msg received
-    def setLast(self, addr, last=pygame.time.get_ticks()):
+    def setLast(self, addr, last=None):
+        if not last:
+            last = pygame.time.get_ticks()
         self.lasts[addr] = last
 
     def closeChannel(self, addr):
@@ -136,6 +138,7 @@ class Host(Server):
         self.Pump()
         # check current time against lasts; if any are late, raise
         # ChannelTimeout with all waiting channel addrs
+        print self.lasts
         ticks = pygame.time.get_ticks()
         lates = [] # late channel addrs
         for addr, last in self.lasts.items():
