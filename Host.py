@@ -81,8 +81,7 @@ class Host(Server):
         self.addr = ip, port # external address
         self.clients = {} # for open channels
         self.lasts = {} # last time msg received for channel
-        self.lates = []
-        self.timeoutState = False
+        self.lates = [] # addrs for late channels, waiting to reconnect
 
         # game state stuff
         self.game_state = GameState()
@@ -127,6 +126,21 @@ class Host(Server):
         del self.clients[addr]
         del self.lasts[addr]
 
+    # removes a player from the server
+    def dropPlayer(self, addr):
+        self.closeChannel(addr)
+        self.sendRemoves(addr)
+        if addr in self.lates:
+            self.lates.remove(addr)
+
+    # pushes all clients up to the current time
+    def resetLasts(self, ticks=None):
+        if not ticks:
+            ticks = pygame.time.get_ticks()
+        for addr in self.lasts:
+            self.lasts[addr] = ticks
+        self.sendBlanks()
+
     # broadcast blank msgs to keep queues moving for everyone
     def sendBlanks(self):
         ticks = pygame.time.get_ticks()
@@ -140,6 +154,12 @@ class Host(Server):
         new_snake_msg = Messaging.createMessage(Messaging.NEW_SNAKE, timestamp, new_snake)
         self.broadcast(new_snake_msg)
 
+    def sendRemoves(self, addr):
+        timestamp = pygame.time.get_ticks()
+        msg = Messaging.createMessage(Messaging.REMOVE_SNAKE, timestamp, addr)
+        self.broadcast(msg, [addr]) # exclude the snake being removed
+        self.addEvent(addr, timestamp, Messaging.REMOVE_SNAKE, None)
+
     def shutdown(self):
         for chnl in self.clients.values():
             chnl.close()
@@ -150,30 +170,21 @@ class Host(Server):
         # check current time against lasts; if any are late, raise
         # ChannelTimeout with all waiting channel addrs
         ticks = pygame.time.get_ticks()
-        lates = [] # late channel addrs
+        if self.lates: # if already waiting on lates
+            for addr in self.lates:
+                last = self.lasts[addr]
+                if last and ticks - last >= Host.TIMEOUT * 30: # done waiting
+                    self.dropPlayer(addr)
+            if not self.lates: # if no longer waiting
+                # move all remaining lasts up to prevent false timeouts
+                self.resetLasts(ticks)
+        else: # check if there are any lates
+            for addr, last in self.lasts.items():
+                if last and ticks - last >= Host.TIMEOUT:
+                    self.lates.append(addr)
+        
         if self.lates:
-            for addr, last in self.lates:
-                if last and ticks - last >= Host.TIMEOUT * 30:
-                    if len(self.lasts.items()) == 1:
-                        raise HostEndGame
-                    self.closeChannel(addr)
-                    self.broadcastRemSnake(addr)
-                    self.sendBlanks() # send blanks to players to tell them to continue
-                    self.timeoutState = False
-                    for key in self.lasts.keys():
-                        self.lasts[key] = ticks # reset last timestamp for each player
-                    del self.lates
-                    self.lates = []
-                    raise ChannelTimeout(self.lates)
-            return
-        #print self.lasts.items()
-        #print self.lates:
-        for addr, last in self.lasts.items():
-            if last and ticks - last >= Host.TIMEOUT:
-                self.lates.append((addr, last)) 
-        if self.lates:
-            self.timeoutState = True
-            raise ChannelTimeout(lates)
+            raise ChannelTimeout(self.lates[:]) # copy all just in case
 
     ##### state methods
     def encodeState(self):

@@ -178,11 +178,7 @@ class Player(ConnectionListener):
         self.Pump()
         # check timeout
         if self.last and pygame.time.get_ticks() - self.last > Player.TIMEOUT:
-            self.timeoutState = True
-            if self.last and pygame.time.get_ticks() - self.last > Player.TIMEOUT * 100:
-                self.Network_disconnected({"action": "disconnected"})
-        else:
-            self.timeoutState = False
+            raise ServerTimeout
 
 if __name__ == "__main__":
     player = Player()

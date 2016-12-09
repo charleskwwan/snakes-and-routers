@@ -8,6 +8,7 @@ from Player import *
 from Host import *
 from GameBar import *
 from InputBox import *
+from DialogBox import *
 
 IP_REG = r"[0-9][0-9]?[0-9]?.[0-9][0-9]?[0-9]?.[0-9][0-9]?[0-9]?.[0-9][0-9]?[0-9]?"
 PORT_REG = r"[0-9][0-9]?[0-9]?[0-9]?[0-9]?"
@@ -97,6 +98,12 @@ class GameWindow(object):
             pygame.display.update()
         return info
 
+    # for dropping players on the host to keep going
+    def dropPlayers(self, host, pids):
+        for i in pids:
+            host.dropPlayer(i)
+        host.resetLasts()
+
     def runHost(self):
         # ip, port = addGame()
         # get ip - if cannot determine, manual input; also get port
@@ -108,19 +115,15 @@ class GameWindow(object):
         if re.match(IP_REG, hostip) and re.match(PORT_REG, hostport):
             hostport = int(hostport)
             try:
-                # host = Host(ip, port)
                 host = Host(hostip, hostport)
             except socket.error:
-                # removeGame((ip, port))
                 return
             self.runClient(host)
         else:
             print "Error: Not a valid host port"
 
     def runClient(self, host=None):
-        # ip, port = host.getID() if host else findGame()
         player = Player()
-        # player.joinGame((ip, port))
         hostaddr = None
         try:
             if host:
@@ -132,7 +135,10 @@ class GameWindow(object):
                     hostaddr = ip, int(port)
                 else:
                     raise InvalidAddress
-            player.joinGame(hostaddr)
+            try:
+                player.joinGame(hostaddr)
+            except EndGame:
+                self.toMenu()
             self.runGame(player, host)
         except InvalidAddress:
             print "Error: Not a valid host address"
@@ -170,72 +176,73 @@ class GameWindow(object):
         while player.isConnected:
             self.time.tick(self.fps)
             self.screen.fill(GameWindow.SCR_BG_COLOR)
-            # print "FPS:", self.time.get_fps()
 
             # check for connection changes
             try:
                 if host:
                     host.updateConnection()
                 player.updateConnection()
+
+                 # handle input
+                for event in pygame.event.get([pygame.KEYDOWN]):
+                    if event.key != pygame.K_UP and event.key != pygame.K_DOWN and \
+                       event.key != pygame.K_LEFT and event.key != pygame.K_RIGHT:
+                        continue
+                    elif player.isReady():
+                        player.sendInput(pygame.time.get_ticks(), event.key)
+
+                # handle other events like moving
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        player.exitGame(quit=True)
+                        if host:
+                            host.shutdown()
+                        exit()
+                    elif event.type == GameWindow.CREATE_FOOD:
+                        host.makeFood()
+                    elif event.type == GameWindow.SEND_BLANK:
+                        host.sendBlanks()
+                    elif player.isReady() and event.type == GameWindow.MOVE_SNAKE:
+                        player.sendMove(pygame.time.get_ticks())
+
+                # work on display
+                player.updateEvents(self.screen)
+                if host:
+                    host.updateEvents()
+                bar.blit(self.screen)
             except EndGame: # in the event of a disconnect
                 break
-            except HostEndGame:
-                break
-            except ChannelTimeout as err:
-                if not host.timeoutState:
-                    pygame.time.set_timer(GameWindow.MOVE_SNAKE, GameWindow.MOVE_TIMER)
-                    pygame.time.set_timer(GameWindow.SEND_BLANK, GameWindow.BLANK_TIMER)
-                    pygame.time.set_timer(GameWindow.CREATE_FOOD, GameWindow.FOOD_TIMER)
-                    continue
-                pygame.time.set_timer(GameWindow.SEND_BLANK, 0) # disable events
-                pygame.time.set_timer(GameWindow.CREATE_FOOD, 0)
-                pygame.time.set_timer(GameWindow.MOVE_SNAKE, 0)
+            except ConnectionException as err:
+                pygame.event.clear([GameWindow.CREATE_FOOD, GameWindow.SEND_BLANK,
+                                    GameWindow.MOVE_SNAKE])
 
-            # handle input
-            for event in pygame.event.get([pygame.KEYDOWN]):
-                if event.key != pygame.K_UP and event.key != pygame.K_DOWN and \
-                   event.key != pygame.K_LEFT and event.key != pygame.K_RIGHT:
-                    continue
-                elif player.isReady() and not player.timeoutState:
-                    player.sendInput(pygame.time.get_ticks(), event.key)
-
-            # handle other events like moving
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    player.exitGame(quit=True)
-                    if host:
-                        host.shutdown()
-                        # removeGame(host.getID())
-                    exit()
-                elif event.type == GameWindow.CREATE_FOOD:
-                    host.makeFood()
-                elif event.type == GameWindow.SEND_BLANK:
-                    host.sendBlanks()
-                elif player.isReady() and event.type == GameWindow.MOVE_SNAKE:
-                    player.sendMove(pygame.time.get_ticks())
-
-
-            # work on display
-            player.updateEvents(self.screen)
-            if host:
-                host.updateEvents()
-            try:
+                # blit rest of screen first
+                player.blit(self.screen)
                 bar.blit(self.screen)
-            except EndGame: # could be triggered by quit button click
-                break
+
+                # create dialog box
+                dtxt = ""
+                f = None
+                if type(err) == ChannelTimeout:
+                    dtxt = "Waiting on: "
+                    for sid in err.args[0]:
+                        dtxt += host.game_state.id_snakes[sid].getName() + " "
+                    f = lambda: self.dropPlayers(host, err.args[0])
+                elif type(err) == ServerTimeout:
+                    dtxt = "Reconnecting to server..."
+                    f = player.exitGame()
+                dbox = DialogBox(0, 0, self.wid / 3, self.hgt /4, dtxt, "Drop", f)
+                dbox.blit(self.screen)
+
             pygame.display.update()
-        print "player not connected any mo"
+
         # cleanup
         if host:
             host.shutdown()
-            # removeGame(host.getID())
             pygame.time.set_timer(GameWindow.SEND_BLANK, 0) # disable
             pygame.time.set_timer(GameWindow.CREATE_FOOD, 0)
             pygame.time.set_timer(GameWindow.MOVE_SNAKE, 0)
             
-         
-		
-
     ##### for general
     def run(self):
         while True:
