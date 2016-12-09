@@ -2,7 +2,7 @@
 Snakes and Routers is a distributed game of Snake.
 
 # Usage: 
-To run Snakes and Routers, first clone the Git repository to a local directory. Then use the command _python GameWindow.py_ to start an instance of the game. 
+To run Snakes and Routers, first clone the Git repository to a local directory. Then use the command _sh play.sh_ to start an instance of the game. 
 
 To host a game, click the "Host!" button and type in a port to listen on. Note your visible IP address is the address that others should connect to if you host a game. 
 
