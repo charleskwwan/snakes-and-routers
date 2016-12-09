@@ -138,7 +138,6 @@ class Host(Server):
         self.Pump()
         # check current time against lasts; if any are late, raise
         # ChannelTimeout with all waiting channel addrs
-        print self.lasts
         ticks = pygame.time.get_ticks()
         lates = [] # late channel addrs
         for addr, last in self.lasts.items():
