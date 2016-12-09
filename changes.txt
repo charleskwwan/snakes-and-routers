@@ -1,0 +1,225 @@
+diff --git a/Food.pyc b/Food.pyc
+index 61cae37..08b5b31 100644
+Binary files a/Food.pyc and b/Food.pyc differ
+diff --git a/GameState.pyc b/GameState.pyc
+index b54f362..615a445 100644
+Binary files a/GameState.pyc and b/GameState.pyc differ
+diff --git a/GameWindow.py b/GameWindow.py
+index d0dde45..f37f293 100644
+--- a/GameWindow.py
++++ b/GameWindow.py
+@@ -166,10 +166,10 @@ class GameWindow(object):
+         # create bottom bar
+         bar = GameBar(player.exitGame, player.getID(), player.game_state.id_snakes)
+ 
++
+         while player.isConnected:
+             self.time.tick(self.fps)
+             self.screen.fill(GameWindow.SCR_BG_COLOR)
+-
+             # print "FPS:", self.time.get_fps()
+ 
+             # check for connection changes
+@@ -179,13 +179,24 @@ class GameWindow(object):
+                 player.updateConnection()
+             except EndGame: # in the event of a disconnect
+                 break
++            except HostEndGame:
++                break
++            except ChannelTimeout as err:
++                if not host.timeoutState:
++                    pygame.time.set_timer(GameWindow.MOVE_SNAKE, GameWindow.MOVE_TIMER)
++                    pygame.time.set_timer(GameWindow.SEND_BLANK, GameWindow.BLANK_TIMER)
++                    pygame.time.set_timer(GameWindow.CREATE_FOOD, GameWindow.FOOD_TIMER)
++                    continue
++                pygame.time.set_timer(GameWindow.SEND_BLANK, 0) # disable events
++                pygame.time.set_timer(GameWindow.CREATE_FOOD, 0)
++                pygame.time.set_timer(GameWindow.MOVE_SNAKE, 0)
+ 
+             # handle input
+             for event in pygame.event.get([pygame.KEYDOWN]):
+                 if event.key != pygame.K_UP and event.key != pygame.K_DOWN and \
+                    event.key != pygame.K_LEFT and event.key != pygame.K_RIGHT:
+                     continue
+-                elif player.isReady():
++                elif player.isReady() and not player.timeoutState:
+                     player.sendInput(pygame.time.get_ticks(), event.key)
+ 
+             # handle other events like moving
+@@ -203,6 +214,7 @@ class GameWindow(object):
+                 elif player.isReady() and event.type == GameWindow.MOVE_SNAKE:
+                     player.sendMove(pygame.time.get_ticks())
+ 
++
+             # work on display
+             player.updateEvents(self.screen)
+             if host:
+@@ -212,15 +224,17 @@ class GameWindow(object):
+             except EndGame: # could be triggered by quit button click
+                 break
+             pygame.display.update()
+-
++        print "player not connected any mo"
+         # cleanup
+         if host:
+             host.shutdown()
+             # removeGame(host.getID())
+             pygame.time.set_timer(GameWindow.SEND_BLANK, 0) # disable
+             pygame.time.set_timer(GameWindow.CREATE_FOOD, 0)
+-        pygame.time.set_timer(GameWindow.MOVE_SNAKE, 0)
+-
++            pygame.time.set_timer(GameWindow.MOVE_SNAKE, 0)
++            
++         
++		
+ 
+     ##### for general
+     def run(self):
+diff --git a/Host.py b/Host.py
+index e61c88a..3ae8732 100644
+--- a/Host.py
++++ b/Host.py
+@@ -9,6 +9,9 @@ from EventQueueHandler import *
+ class ChannelTimeout(ConnectionException): # ConnectionException from Messaging
+     pass
+ 
++class HostEndGame(Exception):
++    pass
++
+ # timestamps for clients and host:
+ #   - clients send only ticks to host
+ #   - host sends tick AND priority to everyone else
+@@ -78,6 +81,8 @@ class Host(Server):
+         self.addr = ip, port # external address
+         self.clients = {} # for open channels
+         self.lasts = {} # last time msg received for channel
++        self.lates = []
++        self.timeoutState = False
+ 
+         # game state stuff
+         self.game_state = GameState()
+@@ -111,6 +116,12 @@ class Host(Server):
+             last = pygame.time.get_ticks()
+         self.lasts[addr] = last
+ 
++    def broadcastRemSnake(self, addr):
++        timestamp = pygame.time.get_ticks()
++        msg = Messaging.createMessage(Messaging.REMOVE_SNAKE, timestamp, addr)
++        self.addEvent(addr, timestamp, Messaging.REMOVE_SNAKE, None)
++        self.broadcast(msg) 
++
+     def closeChannel(self, addr):
+         self.clients[addr].close()
+         del self.clients[addr]
+@@ -138,13 +149,30 @@ class Host(Server):
+         self.Pump()
+         # check current time against lasts; if any are late, raise
+         # ChannelTimeout with all waiting channel addrs
+-        print self.lasts
+         ticks = pygame.time.get_ticks()
+         lates = [] # late channel addrs
++        if self.lates:
++            for addr, last in self.lates:
++                if last and ticks - last >= Host.TIMEOUT * 30:
++                    if len(self.lasts.items()) == 1:
++                        raise HostEndGame
++                    self.closeChannel(addr)
++                    self.broadcastRemSnake(addr)
++                    self.sendBlanks() # send blanks to players to tell them to continue
++                    self.timeoutState = False
++                    for key in self.lasts.keys():
++                        self.lasts[key] = ticks # reset last timestamp for each player
++                    del self.lates
++                    self.lates = []
++                    raise ChannelTimeout(self.lates)
++            return
++        #print self.lasts.items()
++        #print self.lates:
+         for addr, last in self.lasts.items():
+             if last and ticks - last >= Host.TIMEOUT:
+-                lates.append(addr)
+-        if lates:
++                self.lates.append((addr, last)) 
++        if self.lates:
++            self.timeoutState = True
+             raise ChannelTimeout(lates)
+ 
+     ##### state methods
+@@ -188,6 +216,8 @@ class Host(Server):
+         self.events.addEvent(player_id, timestamp, ty, action)
+ 
+     def updateEvents(self):
++        if self.timeoutState:
++            return
+         try:
+             self.events.execute()
+         except UnsyncedQueue:
+diff --git a/Host.pyc b/Host.pyc
+index eb11f15..ba57af0 100644
+Binary files a/Host.pyc and b/Host.pyc differ
+diff --git a/Player.py b/Player.py
+index 84214f8..b03a3cc 100644
+--- a/Player.py
++++ b/Player.py
+@@ -20,6 +20,7 @@ class Player(ConnectionListener):
+         self.reset()
+         self.offset = None # for timing
+         self.last = None # time since last msg received
++        self.timeoutState = False
+ 
+     def reset(self):
+         self.status = Player.NOT_CONNECTED
+@@ -67,8 +68,9 @@ class Player(ConnectionListener):
+         self.game_state.blit(screen)
+ 
+     def updateEvents(self, screen):
++
+         try:
+-            if self.events:
++            if self.events and not self.timeoutState:
+                 self.events.execute()
+         except UnsyncedQueue:
+             pass
+@@ -176,7 +178,11 @@ class Player(ConnectionListener):
+         self.Pump()
+         # check timeout
+         if self.last and pygame.time.get_ticks() - self.last > Player.TIMEOUT:
+-            self.Network_disconnected({"action": "disconnected"})
++            self.timeoutState = True
++            if self.last and pygame.time.get_ticks() - self.last > Player.TIMEOUT * 100:
++                self.Network_disconnected({"action": "disconnected"})
++        else:
++            self.timeoutState = False
+ 
+ if __name__ == "__main__":
+     player = Player()
+diff --git a/Player.pyc b/Player.pyc
+index 8360cc7..e513e8f 100644
+Binary files a/Player.pyc and b/Player.pyc differ
+diff --git a/PodSixNet/Channel.pyc b/PodSixNet/Channel.pyc
+index 483ccfc..6295587 100644
+Binary files a/PodSixNet/Channel.pyc and b/PodSixNet/Channel.pyc differ
+diff --git a/PodSixNet/Connection.pyc b/PodSixNet/Connection.pyc
+index 4d85e37..998a5ca 100644
+Binary files a/PodSixNet/Connection.pyc and b/PodSixNet/Connection.pyc differ
+diff --git a/PodSixNet/EndPoint.pyc b/PodSixNet/EndPoint.pyc
+index 907c2a9..cf18292 100644
+Binary files a/PodSixNet/EndPoint.pyc and b/PodSixNet/EndPoint.pyc differ
+diff --git a/PodSixNet/Server.pyc b/PodSixNet/Server.pyc
+index 845ce13..f0515af 100644
+Binary files a/PodSixNet/Server.pyc and b/PodSixNet/Server.pyc differ
+diff --git a/PodSixNet/__init__.pyc b/PodSixNet/__init__.pyc
+index 167ce7d..167b67d 100644
+Binary files a/PodSixNet/__init__.pyc and b/PodSixNet/__init__.pyc differ
+diff --git a/PodSixNet/async.pyc b/PodSixNet/async.pyc
+index 83a3e8f..4a73959 100644
+Binary files a/PodSixNet/async.pyc and b/PodSixNet/async.pyc differ
+diff --git a/PodSixNet/rencode.pyc b/PodSixNet/rencode.pyc
+index 45da112..fdccd43 100644
+Binary files a/PodSixNet/rencode.pyc and b/PodSixNet/rencode.pyc differ
+diff --git a/Snake.pyc b/Snake.pyc
+index c50075e..439a044 100644
+Binary files a/Snake.pyc and b/Snake.pyc differ
+diff --git a/button.pyc b/button.pyc
+index 9b2e96a..c9d00bb 100644
+Binary files a/button.pyc and b/button.pyc differ

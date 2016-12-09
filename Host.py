@@ -78,6 +78,7 @@ class Host(Server):
         self.addr = ip, port # external address
         self.clients = {} # for open channels
         self.lasts = {} # last time msg received for channel
+        self.lates = [] # addrs for late channels, waiting to reconnect
 
         # game state stuff
         self.game_state = GameState()
@@ -129,6 +130,12 @@ class Host(Server):
         new_snake_msg = Messaging.createMessage(Messaging.NEW_SNAKE, timestamp, new_snake)
         self.broadcast(new_snake_msg)
 
+    def sendRemoves(self, addr):
+        timestamp = pygame.time.get_ticks()
+        msg = Messaging.createMessage(Messaging.REMOVE_SNAKE, timestamp, addr)
+        self.broadcast(msg, [addr]) # exclude the snake being removed
+        self.addEvent(addr, timestamp, Messaging.REMOVE_SNAKE, None)
+
     def shutdown(self):
         for chnl in self.clients.values():
             chnl.close()
@@ -138,14 +145,27 @@ class Host(Server):
         self.Pump()
         # check current time against lasts; if any are late, raise
         # ChannelTimeout with all waiting channel addrs
-        print self.lasts
         ticks = pygame.time.get_ticks()
-        lates = [] # late channel addrs
-        for addr, last in self.lasts.items():
-            if last and ticks - last >= Host.TIMEOUT:
-                lates.append(addr)
-        if lates:
-            raise ChannelTimeout(lates)
+
+        if self.lates: # if already waiting on lates
+            for addr in self.lates:
+                last = self.lasts[addr]
+                if last and ticks - last >= Host.TIMEOUT * 30: # done waiting
+                    self.closeChannel(addr)
+                    self.sendRemoves(addr)
+                    self.lates.remove(addr) # no longer waiting on it
+            if not self.lates: # if no longer waiting
+                # move all remaining lasts up to prevent false timeouts
+                for addr in self.lasts:
+                    self.lasts[addr] = ticks
+                self.sendBlanks() # update all remain host is back
+        else: # check if there are any lates
+            for addr, last in self.lasts :
+                if last and ticks - last >= Host.TIMEOUT:
+                    self.lates.append(addr)
+        
+        if self.lates:
+            raise ChannelTimeout(self.lates[:]) # copy all just in case
 
     ##### state methods
     def encodeState(self):

@@ -170,53 +170,51 @@ class GameWindow(object):
             self.time.tick(self.fps)
             self.screen.fill(GameWindow.SCR_BG_COLOR)
 
-            # print "FPS:", self.time.get_fps()
-
             # check for connection changes
             try:
                 if host:
                     host.updateConnection()
                 player.updateConnection()
+
+                 # handle input
+                for event in pygame.event.get([pygame.KEYDOWN]):
+                    if event.key != pygame.K_UP and event.key != pygame.K_DOWN and \
+                       event.key != pygame.K_LEFT and event.key != pygame.K_RIGHT:
+                        continue
+                    elif player.isReady():
+                        player.sendInput(pygame.time.get_ticks(), event.key)
+
+                # handle other events like moving
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        player.exitGame(quit=True)
+                        if host:
+                            host.shutdown()
+                        exit()
+                    elif event.type == GameWindow.CREATE_FOOD:
+                        host.makeFood()
+                    elif event.type == GameWindow.SEND_BLANK:
+                        host.sendBlanks()
+                    elif player.isReady() and event.type == GameWindow.MOVE_SNAKE:
+                        player.sendMove(pygame.time.get_ticks())
+
+                # work on display
+                player.updateEvents(self.screen)
+                if host:
+                    host.updateEvents()
+                bar.blit(self.screen)
             except EndGame: # in the event of a disconnect
                 break
+            except ChannelTimeout as err:
+                pygame.event.clear([GameWindow.CREATE_FOOD, GameWindow.SEND_BLANK,
+                                    GameWindow.MOVE_SNAKE])
+                
 
-            # handle input
-            for event in pygame.event.get([pygame.KEYDOWN]):
-                if event.key != pygame.K_UP and event.key != pygame.K_DOWN and \
-                   event.key != pygame.K_LEFT and event.key != pygame.K_RIGHT:
-                    continue
-                elif player.isReady():
-                    player.sendInput(pygame.time.get_ticks(), event.key)
-
-            # handle other events like moving
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    player.exitGame(quit=True)
-                    if host:
-                        host.shutdown()
-                        # removeGame(host.getID())
-                    exit()
-                elif event.type == GameWindow.CREATE_FOOD:
-                    host.makeFood()
-                elif event.type == GameWindow.SEND_BLANK:
-                    host.sendBlanks()
-                elif player.isReady() and event.type == GameWindow.MOVE_SNAKE:
-                    player.sendMove(pygame.time.get_ticks())
-
-            # work on display
-            player.updateEvents(self.screen)
-            if host:
-                host.updateEvents()
-            try:
-                bar.blit(self.screen)
-            except EndGame: # could be triggered by quit button click
-                break
             pygame.display.update()
 
         # cleanup
         if host:
             host.shutdown()
-            # removeGame(host.getID())
             pygame.time.set_timer(GameWindow.SEND_BLANK, 0) # disable
             pygame.time.set_timer(GameWindow.CREATE_FOOD, 0)
         pygame.time.set_timer(GameWindow.MOVE_SNAKE, 0)
