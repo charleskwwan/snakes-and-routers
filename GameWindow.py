@@ -25,6 +25,9 @@ def getOwnIP():
 class InvalidAddress(Exception):
     pass
 
+class toMenu(Exception):
+    pass
+
 class GameWindow(object):
     # GameWindow constants
     SCR_BG_COLOR = 255, 255, 255 # white
@@ -65,13 +68,13 @@ class GameWindow(object):
             button("Connect!", 250 - 50, 250 + 50, 100, 50, (0, 120, 0), (0, 255, 0), self.screen, self.runClient)
             self.blitIp(self.screen, int(self.wid * 0.05), int(self.hgt * 0.95), 
                         (0, 0, 0), GameWindow.FONT_SIZE)
-        except RequestException:
+        except toMenu:
             pass
         pygame.display.update()
 
     ##### for game
     def toMenu(self): # alternate to lambda for back button option
-        raise RequestException
+        raise toMenu
 
     def getInfo(self, w, h, prompt):
         info = None
