@@ -4,6 +4,9 @@ from GameState import *
 from Messaging import *
 from EventQueueHandler import *
 
+class ServerTimeout(ConnectionException):
+    pass
+
 class EndGame(Exception):
     pass
 
@@ -11,7 +14,7 @@ class Player(ConnectionListener):
     NOT_CONNECTED = 0
     JOINING = 1
     CONNECTED = 2
-    TIMEOUT = 2 * int(FPS * 0.4) # double the blank timer in GameWindow
+    TIMEOUT = int(SERVER_TIMEOUT * 2.5)
 
     def __init__(self):
         self.reset()
