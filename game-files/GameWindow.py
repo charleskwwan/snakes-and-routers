@@ -115,7 +115,6 @@ class GameWindow(object):
         if re.match(IP_REG, hostip) and re.match(PORT_REG, hostport):
             hostport = int(hostport)
             try:
-                hostip = "192.168.56.1"
                 host = Host(hostip, hostport)
             except socket.error:
                 return
