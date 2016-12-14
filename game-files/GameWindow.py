@@ -64,6 +64,12 @@ class GameWindow(object):
     def showMenu(self):
         # fill screen
         self.screen.fill(GameWindow.SCR_BG_COLOR)
+        # add title
+        font = pygame.font.Font(None, 60)
+        title = font.render("Snakes and Routers", 1, (0, 100, 0))
+        self.screen.blit(title, ((self.wid - font.size("Snakes and Routers")[0]) / 2, 
+                                  int(self.hgt  * 0.15)))
+
         try:
             button("Host!", 250 - 50, 250 - 50, 100, 50, (0, 120, 0), (0, 255, 0), self.screen, self.runHost)
             button("Connect!", 250 - 50, 250 + 50, 100, 50, (0, 120, 0), (0, 255, 0), self.screen, self.runClient)
@@ -71,6 +77,7 @@ class GameWindow(object):
                         (0, 0, 0), GameWindow.FONT_SIZE)
         except toMenu:
             pass
+
         pygame.display.update()
 
     ##### for game
@@ -158,7 +165,7 @@ class GameWindow(object):
                 self.screen.blit(join_text, (int(self.wid * 0.8), 
                                  int(self.hgt * 0.93)))
                 pygame.display.update()
-            except EndGame: # should bypass isConnected anyway
+            except: # should bypass isConnected anyway, ServerTimeout or EndGame
                 if host:
                     host.shutdown()
                 return
