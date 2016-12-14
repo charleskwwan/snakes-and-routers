@@ -175,6 +175,10 @@ class Host(Server):
                 last = self.lasts[addr]
                 if last and ticks - last >= Host.TIMEOUT * 30: # done waiting
                     self.dropPlayer(addr)
+		if last and ticks - last <= Host.TIMEOUT:
+                    self.lates.remove(addr)
+                    self.resetLasts(ticks)
+		    
             if not self.lates: # if no longer waiting
                 # move all remaining lasts up to prevent false timeouts
                 self.resetLasts(ticks)
